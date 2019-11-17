@@ -74,8 +74,12 @@ the new image will be minimal.
                grep ANACONDA_PLATFORM_IMAGES_EDITOR | awk '{print $2;}')
    echo $WORKSPACE
    ```
-7. Build the new image and push it to the internal registry.
+7. Build the new image and push it to the internal registry. Before we
+   run the `docker build` command we need to set the `FROM` statement
+   to match the value of WORKSPACE above, hence the `sed` command. You
+   could also edit the Dockerfile by hand if you wish.
    ```
+   sed -i "s@^FROM .*@FROM $WORKSPACE@" Dockerfile
    docker build --build-arg WORKSPACE=$WORKSPACE -t $WORKSPACE-rstudio .
    docker push $WORKSPACE-rstudio
    ```

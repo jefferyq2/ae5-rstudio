@@ -12,8 +12,10 @@
         message('Requested conda environment: ', desired_env)
         message('NOTE: The requested environment is still being created.')
         message('Once the creation step is complete, R must be restarted.')
-        message('This will happen automatically. But if you prefer not to')
-        message('wait, press RETURN then ESC to exit to the command line.')
+        message('If you wish to wait, this will be done automatically. If')
+        message('you do not, press RETURN then ESC to exit to the command')
+        message('line. You will then need to restart R manually once the')
+        message('conda environment has finished preparing.')
         counter = 0
         cat('Waiting...')
         while (!file.exists(fpath)) {
