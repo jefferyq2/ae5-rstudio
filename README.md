@@ -1,7 +1,5 @@
 # Adding RStudio support to AE5
 
-*** TBD: likely needs a fix for the statup script on 5.3.x ***
-
 This repository allows AE5 customers to install RStudio into the AE5
 editor container and use it within AE5. In order to ensure respect for
 RStudio Server's licensing terms, Anaconda does not provide the RStudio
