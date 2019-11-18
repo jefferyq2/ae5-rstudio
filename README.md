@@ -192,8 +192,10 @@ If it is necessary to remove RStudio, we effectively reverse the steps above.
 4. Re-run Step 2 and confirm that RStudio is indeed removed.
 
 As above, the changes should take effect once Step 3 is complete: RStudio
-should not be available in the drop-down editor selector. Until the
-workspace deployment is reverted, the RStudio
+should not be available in the drop-down editor selector, even though the
+editor itself has not yet been removed from the Docker image. Existing
+sessions that were created with the RStudio option will continue to
+function without change.
 
 ### 2. Revert the workspace deployment 
 
