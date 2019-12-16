@@ -120,22 +120,29 @@ postgres database, which is itself running as a Kubernetes pod.
    POSTGRES=$(kubectl get pods | grep -e -postgres- | cut -f 1 -d ' ')
    echo $POSTGRES
    ```
-2. Examine the current value of the editor list.
+2. Copy `workspace-new.json` into the container and launch a shell.
    ```
-   kubectl exec $POSTGRES -- \
-       psql -U postgres -d anaconda_ui -c \
+   kubectl cp workspace-new.json $POSTGRES:/
+   kubectl exec -it $POSTGRES /bin/sh
+   ```
+   At this point, you are running a shell inside the Postgres pod,
+   and steps 3-6 will be performed inside that pod.
+3. Examine the current value of the editor list.
+   ```
+   psql -U postgres -d anaconda_ui -c \
        "select options from integration where name='workspace';"
    ```
    The contents should closely resemble the contents of the file `workspace-orig.json`.
-3. Modify this value using the contents of the file `workspace-new.json`.
+4. Modify the editor list using the contents of the file `workspace-new.json`.
    ```
    VALUE=$(cat workspace-new.json)
-   kubectl exec $POSTGRES -- \
-       psql -U postgres -d anaconda_ui -c \
+   psql -U postgres -d anaconda_ui -c \
        "update integration set options='$VALUE' where name='workspace';"
    ```
    You should expect an output of `UPDATE 1`.
-4. Re-run Step 2 and confirm that RStudio is indeed present in the editor list.
+5. Re-run Step 3 and confirm that RStudio is indeed present
+   in the editor list.
+6. Type `exit` to leave the Postgres container shell.
 
 Once you have successfully completed Step 3, all new attempts to use the
 drop-down editor list will see RStudio present.
@@ -174,28 +181,35 @@ If it is necessary to remove RStudio, we effectively reverse the steps above.
    POSTGRES=$(kubectl get pods | grep -e -postgres- | cut -f 1 -d ' ')
    echo $POSTGRES
    ```
-2. Examine the current value of the editor list.
+2. Copy `workspace-orig.json` into the container and launch a shell.
    ```
-   kubectl exec $POSTGRES -- \
-       psql -U postgres -d anaconda_ui -c \
-       "select options from integration where name='workspace';"
+   kubectl cp workspace-orig.json $POSTGRES:/
+   kubectl exec -it $POSTGRES /bin/sh
    ```
-   The contents should closely resemble the contents of the file `workspace-new.json`.
-3. Modify this value using the contents of the file `workspace-orig.json`.
+   At this point, you are running a shell inside the Postgres pod,
+   and steps 3-5 will be run inside that pod.
+3. Modify the editor list using the contents of `workspace-new.json`.
    ```
    VALUE=$(cat workspace-orig.json)
-   kubectl exec $POSTGRES -- \
-       psql -U postgres -d anaconda_ui -c \
+   echo $VALUE # and confirm it is not empty
+   psql -U postgres -d anaconda_ui -c \
        "update integration set options='$VALUE' where name='workspace';"
    ```
    You should expect an output of `UPDATE 1`.
-4. Re-run Step 2 and confirm that RStudio is indeed removed.
+4. Examine the new editor list to confirm that RStudio has been removed:
+   ```
+   psql -U postgres -d anaconda_ui -c \
+       "select options from integration where name='workspace';"
+   ```
+5. Type `exit` to leave the Postgres container shell.
 
-As above, the changes should take effect once Step 3 is complete: RStudio
-should not be available in the drop-down editor selector, even though the
-editor itself has not yet been removed from the Docker image. Existing
-sessions that were created with the RStudio option will continue to
-function without change.
+These changes should take effect once this step is complete:
+- All existing sessions, including those with RStudio, will continue
+  to run without change.
+- The "Default Editor" drop-down on the project Settings page will
+  no longer list RStudio as an option.
+- _Existing RStudio projects_ will continue to start with RStudio.
+  The "Default Editor" field may appear blank, however.
 
 ### 2. Revert the workspace deployment 
 
@@ -208,17 +222,15 @@ function without change.
 3. _Remove_ the `-rstudio` suffix to the `value:` on the _next line_
 4. Save and exit the editor.
 
-The workspace pod will automatically restart. Users will not be able to
-launch new editor sessions, or create new projects, for approximately 1-2
-minutes. When the workspace pod finishes initializing, they should be
-able to create projects and sessions as usual.
-
-Existing sessions that were created with the RStudio-enabled editor image
-will continue to function without change, including the ability to use
-RStudio itself. If the session is stopped and restarted, however, RStudio
-will no longer be available. _To be investigated_: projects with RStudio as
-the default editor will likely continue _attempt_, and _fail_, to use RStudio
-until a new editor is chosen.
+Once these steps are complete, tworkspace pod will automatically restart.
+Users will not be able to launch new editor sessions, or create new
+projects, for approximately 1-2 minutes. When the workspace pod finishes
+initializing, the following changes should take effect:
+- Users should be able to create projects and start sessions.
+- Existing sessions, including those running RStudio, will continue to function.
+- _New_ and _restarted_ sessions for projects with RStudio as the
+  selected editor will _fail_. To resolve this, the session must be
+  stopped, and an alternate editor selected and saved.
 
 ### 3. Optionally remove the custom Docker image
 

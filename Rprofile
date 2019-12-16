@@ -7,38 +7,42 @@
     if (!file.exists(fpath)) {
       if (current_env == desired_env) {
         message('NOTE: The project environment is still being prepared.')
-        message('Some R packages may not be available until this is complete.')
+        message('If you do not wish to wait, press RETURN then ESC to exit to')
+        message('the command line; but note that some R packages may not yet')
+        message('be available for use until this process is complete.')
       } else {
         message('Requested conda environment: ', desired_env)
-        message('NOTE: The requested environment is still being created.')
-        message('Once the creation step is complete, R must be restarted.')
-        message('If you wish to wait, this will be done automatically. If')
-        message('you do not, press RETURN then ESC to exit to the command')
-        message('line. You will then need to restart R manually once the')
-        message('conda environment has finished preparing.')
-        counter = 0
-        cat('Waiting...')
-        while (!file.exists(fpath)) {
-            Sys.sleep(0.1)
-            counter = counter + 1
-            if (counter == 30) {
-                counter = 0
-                cat('.')
-                flush.console()
-            }
-        }
-        cat('\n')
-        message('Environment preparation is complete; restarting...')
+        message('NOTE: The requested environment is still being created. Once')
+        message('this is complete, R will be restarted. If you do not wish to')
+        message('wait, press RETURN then ESC to exit to the command line; but')
+        message('note that you will then need to monitor the creation process')
+        message('yourself, and restart R manually when it is complete.')
+      }
+      counter = 0
+      cat('Waiting...')
+      while (!file.exists(fpath)) {
+          Sys.sleep(0.1)
+          counter = counter + 1
+          if (counter == 30) {
+              counter = 0
+              cat('.')
+              flush.console()
+          }
+      }
+      cat('\n')
+      message('Environment preparation is complete.')
+      if (current_env != desired_env) {
+        message('Restarting R...')
         .rs.api.restartSession()
       }
     } else if (current_env != desired_env) {
       message('Requested conda environment: ', desired_env)
       message('ERROR: The project preparation stage is complete, but the')
       message('requested conda environment does not have an R interpreter.')
-      message('This is either because the environment specification in the')
-      message('file anaconda-project.yml does not include the r-base package,')
-      message('or there was an error during preparation. In the latter case,')
-      message('consult the file /opt/continuum/prepare.log for details.')
+      message('This is either because the anaconda-project.yml file does')
+      message('not specify an r-base package, or there was an error during')
+      message('preparation. Consult the file /opt/continuum/prepare.log')
+      message('for more details.')
     }
   }
   if (Sys.getenv("RSTUDIO") == "1") {
