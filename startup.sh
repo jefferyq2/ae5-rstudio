@@ -127,20 +127,21 @@ if [ -s "/var/run/secrets/anaconda/platform-token" ]; then
     su anaconda -c "/opt/continuum/scripts/save-conda-token '${TOOL_CONDA_URL}' '${TOKEN}'"
 fi
 
-
-echo "STARTNG TOOL $TOOL_PACKAGE"
-echo $TOOL_PACKAGE
-echo "-----------"
-
 if [ $TOOL_PACKAGE == 'anaconda-platform-sync' ]; then
     start_sync
 elif [[ $TOOL_PACKAGE =~ dummy. ]]; then
     run_dummy_server
 fi
+
 time wait_for_project_file
 su anaconda -c "python /opt/continuum/scripts/build_condarc.py"
 touch /opt/continuum/preparing
 time prepare_default_env &
+
+echo "STARTING TOOL $TOOL_PACKAGE"
+echo $TOOL_PACKAGE
+echo "-----------"
+
 if [ $TOOL_PACKAGE == 'jupyterlab' ] || [ $TOOL_PACKAGE == 'notebook' ]; then
     exec su anaconda -c "python /opt/continuum/scripts/run_tool.py /opt/continuum/project /opt/continuum/anaconda/envs/lab_launch '$TOOL_PACKAGE'"
 elif [[ $TOOL_PACKAGE == 'zeppelin' ]]; then
