@@ -4,8 +4,7 @@ rm -rf ~/.rstudio
 killall rsession 2>/dev/null
 
 source /opt/continuum/anaconda/bin/activate anaconda50_r
-env | grep ^CONDA > ~/.Renviron
-echo PATH=$PATH >> ~/.Renviron
+env | sed -nE 's@^(CONDA[^=]*)=(.*)@\1="\2"@p' > ~/.Renviron
 echo session-default-working-dir=/opt/continuum/project > ~/.rsession.conf
 echo session-rprofile-on-resume-default=1 >> ~/.rsession.conf
 
