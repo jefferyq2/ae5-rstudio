@@ -56,9 +56,14 @@ the new image will be minimal.
    ```
    https://download2.rstudio.org/server/centos6/x86_64/rstudio-server-rhel-1.2.1335-x86_64.rpm
    ```
-   In a firewalled/airgapped environment, this may not be possible. If this is
-   the case, download this file manually and deliver it to the same directory as
-   step 1, alongside the `Dockerfile` itself.
+   Furthermore, for AE 5.4.x _only_, an additional RPM is needed:
+   ```
+   https://rpmfind.net/linux/centos/7.7.1908/os/x86_64/Packages/psmisc-22.20-16.el7.x86_64.rpm
+   ```
+   In a firewalled/airgapped environment, it may not be possible to download these
+   during the build process. If this is the case, download the files manually and deliver
+   them to the same directory as step 1, alongside the `Dockerfile` itself. Again, for
+   AE 5.3.x, the `psmisc` RPM file is not needed.
 5. Enter the Gravity environment, and change to the same directory.
    ```
    sudo gravity enter
@@ -251,19 +256,19 @@ The first step in uninstallation is to remove the RStudio option from the UI.
                    label: Anaconda Project Sync
                    packages: [anaconda-platform-sync]
    ```
-5. Once you have verified the correct formatting, click the "Apply" button.
-6. Log into the master node and restart the UI pod.
+4. Once you have verified the correct formatting, click the "Apply" button.
+5. Log into the master node and restart the UI pod.
    ```
    kubectl get pods | grep anaconda-enterprise-ap-ui | \
        cut -f 1 -d ' ' | xargs kubectl delete pods
    ```
    The UI pod should take less than a minute to refresh.
 
-There may be minor disruptions in UI responsiveness during this time, and
-some users may need to refresh their browsers, although this should not be
-necessary for views of running sessions or deployments. 
-
-These changes should take effect once this step is complete:
+As before, there may be minor disruptions in UI responsiveness while the
+pod is being restarted. Some users may need to refresh their browsers,
+although this should not be necessary for views of running
+sessions or deployments. These changes should take effect
+once this step is complete:
 - All existing sessions, including those with RStudio, will continue
   to run without change.
 - The "Default Editor" drop-down on the project Settings page will
