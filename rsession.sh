@@ -74,7 +74,7 @@ fi
 
 if [ "$CONDA_PREFIX@$CONDA_DESIRED_ENV" != "$OLD_PREFIX@$OLD_DESIRED" ]; then
     echo "| Writing conda environment variables to .Renviron"
-    env | sed -nE 's@^(CONDA[^=]*)=(.*)@\1="\2"@p' > ~/.Renviron
+    env | sed -nE 's@^(CONDA[^=]*|PATH)=(.*)@\1="\2"@p' > ~/.Renviron
 else
     echo "| Conda environment variables in .Renviron are correct"
 fi
