@@ -21,7 +21,8 @@ a flexible schedule, while Steps 2 and 3 should be performed in rapid
 succession with notification delivered to users.
 
 1. _*Build the Docker image.*_
-   - Time to complete: less than an hour
+   - Time to complete: less than an hour, not including optional preparation
+     time to design the optional default environment.
    - User disruption: none. This step only _stages_ the modified Docker
      image for use. Existing sessions are uninterrupted, and new sessions
      continue to use the stock images.
@@ -48,10 +49,13 @@ image and stage it for _later_ use. Because the image is
 built upon the existing one, the disk space required to hold
 the new image will be minimal.
 
-1. Log into the master node using an account with `sudo`/`gravity` access.
-2. Create a directory visible within Gravity; e.g., `/opt/anaconda/rstudio`
-3. Copy the contents of this repository to this directory.
-4. By default, the build process will download the RStudio-Server RPM package from
+1. (Optional) if you wish to create a customized R environment for RStudio
+   to start with, follow the directions in Step 1a below.
+2. Log into the master node using an account with `sudo`/`gravity` access.
+3. Create a directory visible within Gravity; e.g., `/opt/anaconda/rstudio`
+4. Copy the contents of this repository to this directory, including any
+   `environment.yml` file created in Step 1a.
+5. By default, the build process will download the RStudio-Server RPM package from
    the following URL:
    ```
    https://download2.rstudio.org/server/centos6/x86_64/rstudio-server-rhel-1.2.1335-x86_64.rpm
@@ -64,19 +68,19 @@ the new image will be minimal.
    during the build process. If this is the case, download the files manually and deliver
    them to the same directory as step 1, alongside the `Dockerfile` itself. Again, for
    AE 5.3.x, the `psmisc` RPM file is not needed.
-5. Enter the Gravity environment, and change to the same directory.
+6. Enter the Gravity environment, and change to the same directory.
    ```
    sudo gravity enter
    cd /opt/anaconda/rstudio
    ```
-6. Determine the name of the current editor image.
+7. Determine the name of the current editor image.
    ```
    WORKSPACE=$(kubectl get pods | grep ap-workspace- | \
                awk '{print $1;}' | xargs kubectl describe pod | \
                grep ANACONDA_PLATFORM_IMAGES_EDITOR | awk '{print $2;}')
    echo $WORKSPACE
    ```
-7. Build the new image and push it to the internal registry. Before we
+8. Build the new image and push it to the internal registry. Before we
    run the `docker build` command we need to set the `FROM` statement
    to match the value of WORKSPACE above, hence the `sed` command. You
    could also edit the Dockerfile by hand if you wish.
@@ -88,7 +92,54 @@ the new image will be minimal.
    By design, the name of the image is identical to the original, but with
    an `-rstudio` suffix appended to the tag. This simplifies the
    deployment editing steps below.
-8. Exit the Gravity environment.
+9. Exit the Gravity environment.
+
+#### Step 1a. Creating a custom default environment
+
+In some environments, it may be desirable to create a customized default
+environment for use with RStudio. To do so, spend some time on either a
+standalone Linux machine or generic 
+
+Customers may wish to create a customized default environment for use with
+RStudio. Anaconda Enterprise users can always create entirely new custom
+environments themselves, or modify one of the existing environments, by
+modifying the `anaconda-project.yml` file in their projects. However, this
+comes with a downside: it takes time for this environment to be created,
+slowing down the initial startup of the work session. Creating a custom
+default environment, tuned for the likely use cases of your users, will
+improve the usability of RStudio.
+
+To create a custom environment, include in your copy of this repository
+a file `<envname>.txt`, where `<envname>` is replaced with with the desired
+name of your environment. This name must not coincide with the names of any
+other environment already in the container. The format of this file is simply
+a single `conda` package specification per line; e.g.
+```
+r-base=3.5.1
+r-irkernel
+r-shiny
+```
+This environment *must* contain a version of the `r-base` package; and if you
+wish for this environment to also be compatible with Jupyter, you must include
+the `r-irkernel` package.
+
+If you need to customize the `conda` configuration in order to point it to
+your internal repository or to specify a non-default channel set, create a
+file called `condarc` (note: no preceding period) and include it in your
+copy of this repository as well. An effective strategy is to copy the contents
+of `/opt/continuum/.condarc` that is created within any standard Anaconda
+Enterprise project. Here is an example:
+```
+channels:
+- my_minicran
+channel_alias:
+- https://anaconda.example.com/repository/
+```
+
+You can also supply _multiple_ environment text files; the default environment will
+be selected as the the last environment in lexicographical order. For instance, if you
+include files `r351.txt`, `r353.txt`, and `r361.txt`, then three environments will
+be created, and `r361` will be selected as the default.
 
 ### 2. Modify the deployment to point to the new image
 

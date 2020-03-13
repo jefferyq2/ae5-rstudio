@@ -13,6 +13,14 @@ RUN set -ex \
        fi \
     && rpm -i rstudio-server-rhel-1.2.1335-x86_64.rpm \
     && rm *.rpm \
+    && for envtxt in *.txt; do \
+            envname=${envtxt%.txt}; \
+            CONDARC=./condarc conda create -n $envname --file $envtxt; \
+            [ -d anaconda/envs/$envname/conda-meta ] || exit -1; \
+       done \
+    && if [ $envname ]; then \
+           sed -i "s@anaconda50_r@$envname@" rsession.sh start_rstudio.sh; \
+       fi \
     && cp Rprofile /opt/continuum/.Rprofile \
     && if [ ! -f /opt/continuum/scripts/start_user.sh ]; then \
            cp startup.sh build_condarc.py run_tool.py /opt/continuum/scripts/; \
