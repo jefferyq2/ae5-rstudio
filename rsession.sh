@@ -17,8 +17,7 @@ OCLB=$OCA/envs/lab_launch/bin
 while read -r line; do
     eval "export $line"
 done < ~/.Renviron
-OLD_PREFIX=$CONDA_PREFIX
-OLD_DESIRED=$CONDA_DESIRED_ENV
+
 # If the previous conda environment has R we can use it as the fallback.
 # That way if someone changes the environment to one without R, at least
 # it will fall back to the one they were using previously.
@@ -44,40 +43,50 @@ else
     export CONDA_PROJECT_ERR=yes
 fi
 
-# Switch environments if necessary. However, if the new environment
-# does not have R, we need to switch to the fallback.
+# Switch environments if necessary
 if [ "$CONDA_DESIRED_ENV" == "$CONDA_DEFAULT_ENV" ]; then
     echo "| No environment change needed"
-
-elif source $OCAB/activate $CONDA_DESIRED_ENV; then
-    echo "| Activation of environment succeeded"
-
 else
-    echo "| ERROR: Activation of environment failed"
+    # In theory we should only need source activate here. But for some reason
+    # the activate/deactivate scripts are failing and LDFLAGS is not changed
+    # when it should be. This matters below because LDFLAGS may contain paths
+    # that point to the old environment.
+    source $OCAB/deactivate
+    unset LDFLAGS
+    if source $OCAB/activate $CONDA_DESIRED_ENV; then
+        echo "| Activation of environment succeeded"
+    else
+        echo "| ERROR: Activation of environment failed"
+    fi
 fi
 
-if [ ! -x $CONDA_PREFIX/lib/R/lib/libR.so ]; then
+# Return to the fallback environment if the new environment does not have R
+if [ ! -x "$CONDA_PREFIX/lib/R/lib/libR.so" ]; then
     echo "| ERROR: R not found; activating fallback environment"
     source $OCAB/activate $CONDA_FALLBACK_ENV
 fi
 
+# A number of the environment variables still point to the R environment that
+# was visible to RStudio when it was first run. Modify those to point to the
+# new environment so that the R process will be properly configured
 if [ "$R_HOME" != "$CONDA_PREFIX/lib/R" ]; then
     echo "| Pointing R_HOME, etc. to the correct environment"
     R_PREFIX=$(dirname $(dirname $R_HOME))
-    vars=$(env | sed -nE '/^CONDA/!'"s@$R_PREFIX/@$CONDA_PREFIX/@gp")
+    vars=$(env | sed -nE 's@^([^=]=)(.*)@\1"\2"@;/^CONDA/!'"s@$R_PREFIX/@$CONDA_PREFIX/@gp")
     while read -r line; do
-        declare -x $line
+        echo "|   $line"
+        eval "export $line"
     done <<< "$vars"
 else
     echo "| R_HOME is correct"
 fi
 
-if [ "$CONDA_PREFIX@$CONDA_DESIRED_ENV" != "$OLD_PREFIX@$OLD_DESIRED" ]; then
-    echo "| Writing conda environment variables to .Renviron"
-    env | sed -nE 's@^(CONDA[^=]*)=(.*)@\1="\2"@p' > ~/.Renviron
-else
-    echo "| Conda environment variables in .Renviron are correct"
-fi
+# RStudio strips out much of the environment before launching the R console
+# and shell terminals. We need the CONDA variables if we want to use conda on
+# the command line. The PATH variable is not always preserved either. By putting
+# these variables in .Renviron we ensure they will be restored.
+echo "| Writing CONDA_*/PATH environment variables to .Renviron"
+env | sed -nE 's@^(CONDA[^=]*|PATH)=(.*)@\1="\2"@p' > ~/.Renviron
 
 # We need to add $CONDA_PREFIX/lib in LD_LIBRARY_PATH for rsession
 # $CONDA_PREFIX/lib/R/lib is already in there by virtue of activation
@@ -90,6 +99,6 @@ echo "|   R_HOME: $R_HOME"
 echo "|   PATH: $PATH"
 echo "|   LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
 
-echo "| Executing rsession with arguments: $@"
+echo "| Arguments: $@"
 echo "+-- END: AE5 R Session Manager ---"
 exec /usr/lib/rstudio-server/bin/rsession "$@"
