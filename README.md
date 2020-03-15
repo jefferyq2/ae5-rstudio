@@ -96,18 +96,11 @@ the new image will be minimal.
 
 #### Step 1a. Creating a custom default environment
 
-In some environments, it may be desirable to create a customized default
-environment for use with RStudio. To do so, spend some time on either a
-standalone Linux machine or generic 
-
-Customers may wish to create a customized default environment for use with
-RStudio. Anaconda Enterprise users can always create entirely new custom
-environments themselves, or modify one of the existing environments, by
-modifying the `anaconda-project.yml` file in their projects. However, this
-comes with a downside: it takes time for this environment to be created,
-slowing down the initial startup of the work session. Creating a custom
-default environment, tuned for the likely use cases of your users, will
-improve the usability of RStudio.
+If desired, you can create a customized R environment that will be included
+in the Docker container and made available to all users of RStudio by default.
+If your intention is to guide most or all of your users to this environment
+instead of the default choice `anaconda50_r`, this will improve their user
+experience considerably.
 
 To create a custom environment, include in your copy of this repository
 a file `<envname>.txt`, where `<envname>` is replaced with with the desired
@@ -135,11 +128,32 @@ channels:
 channel_alias:
 - https://anaconda.example.com/repository/
 ```
+If conda needs a custom SSL chain, include that file as well. Within the Docker
+container itself, it will be stored in the directory `/aesrc/rstudio`. For example,
+if the name of the file is `chain.pem`, the relevant line in your `condarc` should be:
+```
+ssl_verify: /aesrc/rstudio/chain.pem
+```
 
 You can also supply _multiple_ environment text files; the default environment will
 be selected as the the last environment in lexicographical order. For instance, if you
 include files `r351.txt`, `r353.txt`, and `r361.txt`, then three environments will
 be created, and `r361` will be selected as the default.
+
+A great way to make sure that these custom environments are going to function properly
+is actually to design them _within Anaconda Enterprise itself._ To do this, just create
+and a standard Anaconda Enterprise project, and launch a terminal window. Use standard
+`conda` commands to create the environment; e.g.,
+```
+conda create -n r351 r-base=3.5.1 r-irkernel
+source activate r351
+conda install r-shiny
+```
+Once your are satisfied with the results, the `conda list --export` command can be used
+to generate the text file you need for the instructions above; e.g.
+```
+conda list --export > r351.txt
+```
 
 ### 2. Modify the deployment to point to the new image
 
