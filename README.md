@@ -86,7 +86,8 @@ the new image will be minimal.
    could also edit the Dockerfile by hand if you wish.
    ```
    sed -i "s@^FROM .*@FROM $WORKSPACE@" Dockerfile
-   docker build --build-arg WORKSPACE=$WORKSPACE -t $WORKSPACE-rstudio .
+   # When using curl to download the rstudio binary and minimizing image size, --network=host is required for internet access as the docker bridge network was removed in 541
+   docker build --network=host --build-arg WORKSPACE=$WORKSPACE -t $WORKSPACE-rstudio .
    docker push $WORKSPACE-rstudio
    ```
    By design, the name of the image is identical to the original, but with

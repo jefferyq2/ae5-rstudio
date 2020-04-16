@@ -16,8 +16,14 @@ fi
 rpm -i rstudio-server-rhel-1.2.5033-x86_64.rpm
 rm *.rpm
 
-# Create the custom environments
-for envtxt in *.txt; do
+# for some reason on AE541 ae-editor, conda is not in path and build fail - using full path... 
+conda=conda
+[[ command -v $conda ]] || conda='/opt/continuum/anaconda/condabin/conda'
+[[ -f $conda ]] || exit 1
+
+# Create the custom environments - only if environment files are present 
+envs=$(ls *.txt 2>/dev/null)
+for envtxt in $envs; do
     envname=${envtxt%.txt}
     CONDARC=./condarc conda create -n $envname --file $envtxt
     [ -d /opt/continuum/anaconda/envs/$envname/conda-meta ] || exit -1
@@ -31,6 +37,7 @@ if [ $envname ]; then
     conda clean --all
 fi
 
+
 # 5.3.x back compatibility fixes
 if [ ! -f /opt/continuum/scripts/start_user.sh ]; then
     cp startup.sh build_condarc.py run_tool.py /opt/continuum/scripts/
@@ -43,3 +50,4 @@ cp rsession.sh start_rstudio.sh /opt/continuum/scripts/
 # Fix ownership and permissions
 chmod +x /opt/continuum/scripts/*.sh
 chown anaconda:anaconda /opt/continuum/.Rprofile /opt/continuum/scripts/*.sh
+
