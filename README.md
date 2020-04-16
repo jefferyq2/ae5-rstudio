@@ -86,13 +86,16 @@ the new image will be minimal.
    could also edit the Dockerfile by hand if you wish.
    ```
    sed -i "s@^FROM .*@FROM $WORKSPACE@" Dockerfile
-   # When using curl to download the rstudio binary and minimizing image size, --network=host is required for internet access as the docker bridge network was removed in 541
    docker build --network=host --build-arg WORKSPACE=$WORKSPACE -t $WORKSPACE-rstudio .
    docker push $WORKSPACE-rstudio
    ```
    By design, the name of the image is identical to the original, but with
    an `-rstudio` suffix appended to the tag. This simplifies the
    deployment editing steps below.
+
+   _NOTE_: the use of the `--network=host` option with `docker` is new to
+   AE 5.4.1. It is required because the docker bridge network was removed
+   from the current Gravity release.
 9. Exit the Gravity environment.
 
 #### Step 1a. Creating a custom default environment
@@ -150,11 +153,16 @@ conda create -n r351 r-base=3.5.1 r-irkernel
 source activate r351
 conda install r-shiny
 ```
-Once your are satisfied with the results, the `conda list --export` command can be used
+Once you are satisfied with the results, the `conda list --export` command can be used
 to generate the text file you need for the instructions above; e.g.
 ```
 conda list --export > r351.txt
 ```
+
+_NOTE:_ In previous versions of this extension, the `anaconda-project` tool would not
+be available for execution inside the R terminal unless it was added to the custom
+enviromnent. This is no longer necessary, because `anaconda-project` has been added
+to the system `PATH`.
 
 ### 2. Modify the deployment to point to the new image
 
