@@ -86,7 +86,7 @@ fi
 # the command line. The PATH variable is not always preserved either. By putting
 # these variables in .Renviron we ensure they will be restored.
 echo "| Writing CONDA_*/PATH environment variables to .Renviron"
-env | sed -nE 's@^(CONDA[^=]*|PATH)=(.*)@\1="\2"@p' > ~/.Renviron
+env | sed -nE 's@^((ANACONDA_PROJECT|CONDA)_[^=]*|PATH)=(.*)@\1="\3"@p' > ~/.Renviron
 
 # We need to add $CONDA_PREFIX/lib in LD_LIBRARY_PATH for rsession
 # $CONDA_PREFIX/lib/R/lib is already in there by virtue of activation
