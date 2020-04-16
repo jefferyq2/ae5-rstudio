@@ -86,7 +86,7 @@ the new image will be minimal.
    could also edit the Dockerfile by hand if you wish.
    ```
    sed -i "s@^FROM .*@FROM $WORKSPACE@" Dockerfile
-   # --network=host is only required on ae541 and only if there is no local file avilable during build. The docker bridge network was removed
+   # When using curl to download the rstudio binary and minimizing image size, --network=host is required for internet access as the docker bridge network was removed in 541
    docker build --network=host --build-arg WORKSPACE=$WORKSPACE -t $WORKSPACE-rstudio .
    docker push $WORKSPACE-rstudio
    ```
