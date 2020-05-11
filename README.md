@@ -58,7 +58,7 @@ the new image will be minimal.
 5. By default, the build process will download the RStudio-Server RPM package from
    the following URL:
    ```
-   https://download2.rstudio.org/server/centos6/x86_64/rstudio-server-rhel-1.2.1335-x86_64.rpm
+   https://download2.rstudio.org/server/centos6/x86_64/rstudio-server-rhel-1.2.5042-x86_64.rpm
    ```
    Furthermore, for AE 5.4.x _only_, an additional RPM is needed:
    ```
