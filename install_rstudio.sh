@@ -4,7 +4,7 @@ set -ex
 # Install psmisc for 5.4.x
 if [ ! $(rpm -qa psmisc) ]; then
    if [ ! -f psmisc-22.20-16.el7.x86_64.rpm ]; then
-      curl -O https://rpmfind.net/linux/centos/7.7.1908/os/x86_64/Packages/psmisc-22.20-16.el7.x86_64.rpm
+      curl -O http://mirror.centos.org/centos/7/os/x86_64/Packages/psmisc-22.20-16.el7.x86_64.rpm
    fi
    rpm -i psmisc-22.20-16.el7.x86_64.rpm
 fi
