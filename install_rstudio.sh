@@ -9,10 +9,10 @@ fi
 
 # Install psmisc for 5.4.x
 if [ ! $(rpm -qa psmisc) ]; then
-   if [ ! -f psmisc-22.20-16.el7.x86_64.rpm ]; then
-      curl -O http://mirror.centos.org/centos/7/os/x86_64/Packages/psmisc-22.20-16.el7.x86_64.rpm
+   if [ ! -f psmisc-22.20-17.el7.x86_64.rpm ]; then
+      curl -O http://mirror.centos.org/centos/7/os/x86_64/Packages/psmisc-22.20-17.el7.x86_64.rpm
    fi
-   rpm -i psmisc-22.20-16.el7.x86_64.rpm
+   rpm -i psmisc-22.20-17.el7.x86_64.rpm
 fi
 
 # Install RStudio server
