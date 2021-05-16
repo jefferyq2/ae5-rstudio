@@ -1,18 +1,17 @@
-# Adding RStudio support to AE5
+# Adding RStudio support to AE5.5
 
-This repository allows AE5 customers to install RStudio into the AE5
-editor container and use it within AE5. In order to ensure respect for
-RStudio Server's licensing terms, Anaconda does not provide the RStudio
-binary to customers; they must acquire it themselves. These instructions
-are intended to be followed by the customer as well, and can be applied
-to AE 5.3.x or later. 
+This repository allows AE5 customers to install RStudio and use it within
+AE5.5.  In order to ensure respect for RStudio Server's licensing terms,
+Anaconda does not provide the RStudio binary to customers; they must acquire
+it themselves. These instructions are intended to be followed by the customer
+and can be applied to AE 5.5 or later. 
 
 When successfully completed, RStudio will be made available as an editor
 selection in AE's dropdown menus alongside Jupyter, JupyterLab, and Zeppelin.
 
-Installation is a three step process that introduces minimal
-disruption to a running cluster. If necessary, the cluster can be reverted
-to the stock behavior, without RStudio, also with minimal disruption.
+Installation is a three step process that introduces minimal disruption to a
+running cluster. If necessary, the cluster can be reverted to the stock behavior,
+without RStudio, also with minimal disruption.
 
 ## Installation
 
@@ -49,122 +48,56 @@ image and stage it for _later_ use. Because the image is
 built upon the existing one, the disk space required to hold
 the new image will be minimal.
 
-1. (Optional) if you wish to create a customized R environment for RStudio
-   to start with, follow the directions in Step 1a below.
-2. Log into the master node using an account with `sudo`/`gravity` access.
-3. Create a directory visible within Gravity; e.g., `/opt/anaconda/rstudio`
-4. Copy the contents of this repository to this directory, including any
-   `environment.yml` file created in Step 1a.
-5. By default, the build process will download the RStudio-Server RPM package from
-   the following URL:
+1. Log into the master node using an account with `sudo`/`gravity` access.
+2. Create a directory visible within Gravity; e.g., `/opt/anaconda/rstudio`
+3. Copy the `Dockerfile` in this repository into that directory.
+4. In addition, we need the two files found at the following URLs:
+
+   - `https://download2.rstudio.org/server/centos8/x86_64/rstudio-server-rhel-1.3.959-x86_64.rpm`
+   - `https://download2.rstudio.org/server/centos6/x86_64/rstudio-server-rhel-1.3.959-x86_64.rpm`
+
+   Note that the filenames here are identical, but they are different files.
+   For this reason, our Dockerfile expects the downloaded copies of these files
+   to be named `r8.rpm` and `r6.rpm`, respectively. The following pair of `curl`
+   commands ensure they are downloaded properly and staged for our build:
    ```
-   https://download2.rstudio.org/server/centos6/x86_64/rstudio-server-rhel-1.2.5042-x86_64.rpm
+   curl -o r8.rpm -L https://download2.rstudio.org/server/centos8/x86_64/rstudio-server-rhel-1.3.959-x86_64.rpm
+   curl -o r6.rpm -L https://download2.rstudio.org/server/centos6/x86_64/rstudio-server-rhel-1.3.959-x86_64.rpm
    ```
-   Furthermore, for AE 5.4.x _only_, an additional RPM is needed:
-   ```
-   https://rpmfind.net/linux/centos/7.7.1908/os/x86_64/Packages/psmisc-22.20-16.el7.x86_64.rpm
-   ```
-   In a firewalled/airgapped environment, it may not be possible to download these
-   during the build process. If this is the case, download the files manually and deliver
-   them to the same directory as step 1, alongside the `Dockerfile` itself. Again, for
-   AE 5.3.x, the `psmisc` RPM file is not needed.
-6. Enter the Gravity environment, and change to the same directory.
+4. Enter the Gravity environment, and change to the same directory.
    ```
    sudo gravity enter
    cd /opt/anaconda/rstudio
    ```
-7. Determine the name of the current editor image.
+5. Determine the name of the current editor image.
    ```
-   WORKSPACE=$(kubectl get pods | grep ap-workspace- | \
-               awk '{print $1;}' | xargs kubectl describe pod | \
-               grep ANACONDA_PLATFORM_IMAGES_EDITOR | awk '{print $2;}')
-   echo $WORKSPACE
+   IMAGENAME=$(docker image ls | grep ae-editor | grep -v rstudio | awk '{print $1":"$2;}')
+   echo $IMAGENAME
    ```
-8. Build the new image and push it to the internal registry. Before we
+   Make sure this image name makes sense. It should look something like this:
+   ```
+   leader.telekube.local:5000/ae-editor:5.5.0-58-g403cc503d
+   ```
+   but the version number may be different.
+6. Build the new image and push it to the internal registry. Before we
    run the `docker build` command we need to set the `FROM` statement
    to match the value of WORKSPACE above, hence the `sed` command. You
    could also edit the Dockerfile by hand if you wish.
    ```
-   sed -i "s@^FROM .*@FROM $WORKSPACE@" Dockerfile
-   docker build --network=host --build-arg WORKSPACE=$WORKSPACE -t $WORKSPACE-rstudio .
-   docker push $WORKSPACE-rstudio
+   docker build --build-arg IMAGENAME=$IMAGENAME -t $IMAGENAME-rstudio .
+   docker push $IMAGENAME-rstudio
    ```
    By design, the name of the image is identical to the original, but with
    an `-rstudio` suffix appended to the tag. This simplifies the
    deployment editing steps below.
+7. Run the command
+   ```
+   docker image ls | grep $IMAGENAME-rstudio
+   ```
+   to verify that the image that was just created is visible.
+8. Exit the Gravity environment.
 
-   _NOTE_: the use of the `--network=host` option with `docker` is new to
-   AE 5.4.1. It is required because the docker bridge network was removed
-   from the current Gravity release.
-9. Exit the Gravity environment.
-
-#### Step 1a. Creating a custom default environment
-
-If desired, you can create a customized R environment that will be included
-in the Docker container and made available to all users of RStudio by default.
-If your intention is to guide most or all of your users to this environment
-instead of the default choice `anaconda50_r`, this will improve their user
-experience considerably.
-
-To create a custom environment, include in your copy of this repository
-a file `<envname>.txt`, where `<envname>` is replaced with with the desired
-name of your environment. This name must not coincide with the names of any
-other environment already in the container. The format of this file is simply
-a single `conda` package specification per line; e.g.
-```
-r-base=3.5.1
-r-irkernel
-r-shiny
-```
-This environment *must* contain a version of the `r-base` package; and if you
-wish for this environment to also be compatible with Jupyter, you must include
-the `r-irkernel` package.
-
-If you need to customize the `conda` configuration in order to point it to
-your internal repository or to specify a non-default channel set, create a
-file called `condarc` (note: no preceding period) and include it in your
-copy of this repository as well. An effective strategy is to copy the contents
-of `/opt/continuum/.condarc` that is created within any standard Anaconda
-Enterprise project. Here is an example:
-```
-channels:
-- my_minicran
-channel_alias:
-- https://anaconda.example.com/repository/
-```
-If conda needs a custom SSL chain, include that file as well. Within the Docker
-container itself, it will be stored in the directory `/aesrc/rstudio`. For example,
-if the name of the file is `chain.pem`, the relevant line in your `condarc` should be:
-```
-ssl_verify: /aesrc/rstudio/chain.pem
-```
-
-You can also supply _multiple_ environment text files; the default environment will
-be selected as the the last environment in lexicographical order. For instance, if you
-include files `r351.txt`, `r353.txt`, and `r361.txt`, then three environments will
-be created, and `r361` will be selected as the default.
-
-A great way to make sure that these custom environments are going to function properly
-is actually to design them _within Anaconda Enterprise itself._ To do this, just create
-and a standard Anaconda Enterprise project, and launch a terminal window. Use standard
-`conda` commands to create the environment; e.g.,
-```
-conda create -n r351 r-base=3.5.1 r-irkernel
-source activate r351
-conda install r-shiny
-```
-Once you are satisfied with the results, the `conda list --export` command can be used
-to generate the text file you need for the instructions above; e.g.
-```
-conda list --export > r351.txt
-```
-
-_NOTE:_ In previous versions of this extension, the `anaconda-project` tool would not
-be available for execution inside the R terminal unless it was added to the custom
-enviromnent. This is no longer necessary, because `anaconda-project` has been added
-to the system `PATH`.
-
-### 2. Modify the deployment to point to the new image
+### 2. Modify the workspace pod to point to the new image
 
 1. Edit the deployment for the workspace container.
    ```
@@ -183,11 +116,7 @@ functional yet, and the first new sessions created on each worker node
 may take a bit longer to start as the additional image layers are retrieved.
 
 To verify that the new image is being utilized, launch a session and verify
-that the following files/directories are present:
-- `/opt/continuum/.Rprofile`
-- `/opt/continuum/scripts/start_rstudio.sh`
-- `/opt/continuum/scripts/rsession.sh`
-- `/usr/lib/rstudio-server/`
+that there is content in the directory `/usr/lib/rstudio-server/`.
 
 ### 3. Update the UI configuration to incude the RStudio option
 
@@ -201,55 +130,53 @@ by the UI.
    this is file to be edited.
 3. Search for the `anaconda-workspace:` section of this file. The quickest way to do so
    is to focus the text editor and search for `anaconda-workspace:` (including the colon).
-   The default values in this section will look like this, but note that the value
-   of the `url:` will differ:
+   The default values in this section will look like this:
    ```   
-       anaconda-workspace:
-         workspace:
-           icon: fa-anaconda
-           label: workspace
-           url: https://aip.anaconda.com/platform/workspace/api/v1
-           options:
-             workspace:
-               tools:
-                 notebook:
-                   default: true
-                   label: Jupyter Notebook
-                   packages: [notebook]
-                 jupyterlab:
-                   label: JupyterLab
-                   packages: [jupyterlab]
-                 anaconda-platform-sync:
-                   label: Anaconda Project Sync
-                   packages: [anaconda-platform-sync]
+    anaconda-workspace:
+      workspace:
+        icon: fa-anaconda
+        label: workspace
+        url: http://anaconda-enterprise-ap-workspace
+        options:
+          workspace:
+            tools:
+              notebook:
+                default: true
+                label: Jupyter Notebook
+              jupyterlab:
+                default: false
+                label: JupyterLab
+              zeppelin:
+                default: false
+                label: Apache Zeppelin
    ```
 4. Add an RStudio section, so that the section looks as follows.
-   _It is essential that exact indentation, with spaces, be preserved._
-   Again, the value of the `url:` line will be different
-   in your installation; do not modify it.
-   ```   
-       anaconda-workspace:
-         workspace:
-           icon: fa-anaconda
-           label: workspace
-           url: https://aip.anaconda.com/platform/workspace/api/v1
-           options:
-             workspace:
-               tools:
-                 notebook:
-                   default: true
-                   label: Jupyter Notebook
-                   packages: [notebook]
-                 jupyterlab:
-                   label: JupyterLab
-                   packages: [jupyterlab]
-                 rstudio:
-                   label: RStudio
-                   packages: [rstudio]
-                 anaconda-platform-sync:
-                   label: Anaconda Project Sync
-                   packages: [anaconda-platform-sync]
+   _It is essential that exact indentation, with spaces, is preserved._
    ```
+    anaconda-workspace:
+      workspace:
+        icon: fa-anaconda
+        label: workspace
+        url: http://anaconda-enterprise-ap-workspace
+        options:
+          workspace:
+            tools:
+              notebook:
+                default: true
+                label: Jupyter Notebook
+              jupyterlab:
+                default: false
+                label: JupyterLab
+              zeppelin:
+                default: false
+                label: Apache Zeppelin
+              rstudio:
+                default: false
+                hidden: false
+                label: RStudio
+   ```
+   _NOTE:_ if your configuration already has an `rstudio` section, simply
+   make sure that the value of the `hidden:` parameter is `false:`.
 5. Once you have verified the correct formatting, click the "Apply" button.
 6. Return to the master node and restart the UI pod.
    ```
@@ -305,32 +232,9 @@ The first step in uninstallation is to remove the RStudio option from the UI.
    `anaconda-enterprirse-anaconda-platform.yml` option. This should
    be the default. You will see a single tab titled `anaconda-platform.yml`;
    this is file to be edited.
-3. Search for the three-line `rstudio:` section of this file, and remove it.
-   _It is essential that exact indentation, with spaces, be preserved._
-   The resulting `anaconda-workspace:` section should look something like this.
-   Again, the value of the `url:` line will be different in your installation;
-   do not modify it.
-   ```   
-       anaconda-workspace:
-         workspace:
-           icon: fa-anaconda
-           label: workspace
-           url: https://aip.anaconda.com/platform/workspace/api/v1
-           options:
-             workspace:
-               tools:
-                 notebook:
-                   default: true
-                   label: Jupyter Notebook
-                   packages: [notebook]
-                 jupyterlab:
-                   label: JupyterLab
-                   packages: [jupyterlab]
-                 anaconda-platform-sync:
-                   label: Anaconda Project Sync
-                   packages: [anaconda-platform-sync]
-   ```
-4. Once you have verified the correct formatting, click the "Apply" button.
+3. Search for the three-line `rstudio:` section of this file, and change the
+   line `hidden: false` to `hidden: true`. Do not change the indentation.
+4. Click the "Apply" button.
 5. Log into the master node and restart the UI pod.
    ```
    kubectl get pods | grep anaconda-enterprise-ap-ui | \
@@ -395,14 +299,12 @@ JupyterLab, Jupyter, and Zeppelin may be using the custom image.
    ```
 3. Recall the name of the standard editor image.
    ```
-   WORKSPACE=$(kubectl get pods | grep ap-workspace- | \
-               awk '{print $1;}' | xargs kubectl describe pod | \
-               grep ANACONDA_PLATFORM_IMAGES_EDITOR | awk '{print $2;}')
-   echo $WORKSPACE
+   IMAGENAME=$(docker image ls | grep ae-editor.*rstudio | awk '{print $1":"$2;}')
+   echo $IMAGENAME
    ```
 4. Remove the customized image.
    ```
-   docker image rm $WORKSPACE-rstudio
+   docker image rm $IMAGENAME
    ```
 5. Exit gravity.
 
