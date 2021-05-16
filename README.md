@@ -177,7 +177,7 @@ by the UI.
    ```
    _NOTE:_ if your configuration already has an `rstudio` section, simply
    make sure that the value of the `hidden:` parameter is `false:`.
-5. Once you have verified the correct formatting, click the "Apply" button.
+5. Once you have verified the correct formatting, click the "Save Changes" button.
 6. Return to the master node and restart the UI pod.
    ```
    kubectl get pods | grep anaconda-enterprise-ap-ui | \
@@ -234,7 +234,7 @@ The first step in uninstallation is to remove the RStudio option from the UI.
    this is file to be edited.
 3. Search for the three-line `rstudio:` section of this file, and change the
    line `hidden: false` to `hidden: true`. Do not change the indentation.
-4. Click the "Apply" button.
+4. Click the "Save Changes" button.
 5. Log into the master node and restart the UI pod.
    ```
    kubectl get pods | grep anaconda-enterprise-ap-ui | \
