@@ -20,8 +20,7 @@ a flexible schedule, while Steps 2 and 3 should be performed in rapid
 succession with notification delivered to users.
 
 1. _*Build the Docker image.*_
-   - Time to complete: less than an hour, not including optional preparation
-     time to design the optional default environment.
+   - Time to complete: less than an hour.
    - User disruption: none. This step only _stages_ the modified Docker
      image for use. Existing sessions are uninterrupted, and new sessions
      continue to use the stock images.
