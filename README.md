@@ -1,323 +1,400 @@
-# Adding RStudio support to AE5.5
+# Adding RStudio support to AE5.5.1+
 
-This repository allows AE5 customers to install RStudio and use it within
-AE5.5.  In order to ensure respect for RStudio Server's licensing terms,
-Anaconda does not provide the RStudio binary to customers; they must acquire
-it themselves. These instructions are intended to be followed by the customer
-and can be applied to AE 5.5 or later. 
+This repository allows AE5 customers to install
+[RStudio](https://www.rstudio.com/) and use it within AE5.
+In order to fully respect RStudio's licensing terms, Anaconda
+cannot provide the RStudio binaries to customers—they must
+acquire it themselves.
 
-When successfully completed, RStudio will be made available as an editor
-selection in AE's dropdown menus alongside Jupyter, JupyterLab, and Zeppelin.
+These instructions are intended to be followed by the customer
+and can be applied to AE 5.5.1 or later. Installation introduces
+minimal disruption to the cluster, and can easily be reverted if
+issues arise. The Anaconda team is happy to assist if necessary.
 
-Installation is a three step process that introduces minimal disruption to a
-running cluster. If necessary, the cluster can be reverted to the stock behavior,
-without RStudio, also with minimal disruption.
+Auxiliary tools such as RStudio, VSCode, or Zeppelin are installed
+into a shared volume provisioned just for this purpose. If RStudio
+is the first tool being installed, those instructions will need
+to be followed first. See the document [TOOLS.md](TOOLS.md) for
+more details, and make sure that work is completed before
+proceeding with the instructions here.
 
 ## Installation
 
-The installation steps are as follows. Step 1 can be performed on
-a flexible schedule, while Steps 2 and 3 should be performed in rapid
-succession with notification delivered to users.
+We have broken the installation process into the following steps:
 
-1. _*Build the Docker image.*_
-   - Time to complete: less than an hour.
-   - User disruption: none. This step only _stages_ the modified Docker
-     image for use. Existing sessions are uninterrupted, and new sessions
-     continue to use the stock images.
-2. _*Modify the deployment to point to the new image.*_
-   - Time to complete: <5 minutes
-   - User disruption: none for existing sessions, deployments, or jobs.
-     Creation of new sessions, as well as creation of new projects
-     from templates, samples, and uploads, will be disrupted for
-     approximately 1-2 minutes while the workspace pod restarts.
-     Once the workspace pod is fully operational again, and until
-     step 3 is completed, users should discern no functional
-     difference in operation.
-3. _*Modify the UI configuration to include an RStudio option.*_
-   - Time to complete: <5 minutes
-   - User disruption: none for existing sessions, deployments, or jobs.
-     Because the UI pod is restarted, users may experience a brief
-     disruption in UI responsiveness for 1-2 minutes.
+1. _Set the tool volume to read-write._
+2. _Launch the RStudio installation project._
+3. _Obtain the RStudio server binaries._
+4. _Run the installation script._
+5. _Enable the RStudio editor option._
+6. _Verify the installation._
+7. _Set the tool volume to read-only._
 
-### Step 1. Build the Docker image
+The steps will have the following impact on the behavior of the cluster:
 
-As stated above, the Docker image can be built without disruption of the
-cluster. That is because the steps in this section only create a new Docker
-image and stage it for _later_ use. Because the image is
-built upon the existing one, the disk space required to hold
-the new image will be minimal.
+- No *existing* sessions or deployments will be affected. Users
+  can continue to work in existing sessions without interruption.
+- During Steps 1, 5, and 7, there will be brief (<30 second)
+  interruptions in the function of main UI.
+- While Steps 2 through 6 are in progress, the `/tools` volume
+  will be mounted into any new sessions, deployments, and jobs
+  in a read-write fashion.
+  
+Overall, we recommend executing these steps during a maintenance
+interval, during which users should not create new sessions. But
+you do not need to ask your users to halt existing sessions
+or deployments.
 
-1. Log into the master node using an account with `sudo`/`gravity` access.
-2. Create a directory visible within Gravity; e.g., `/opt/anaconda/rstudio`
-3. Copy the `Dockerfile` in this repository into that directory.
-4. In addition, we need the two files found at the following URLs:
+### Step 1. Set the tool volume to read-write
 
-   - `https://download2.rstudio.org/server/centos8/x86_64/rstudio-server-rhel-1.3.959-x86_64.rpm`
-   - `https://download2.rstudio.org/server/centos6/x86_64/rstudio-server-rhel-1.3.959-x86_64.rpm`
+1. Edit the `anaconda-platform.yml` ConfigMap. On Gravity clusters,
+   this is most easily performed in the Ops Center.
+2. Search for the `/tools:` volume specification.
+3. Change `readOnly: true` to `readOnly: false`.
+4. Save the changed ConfigMap. If possible, *leave the editor open*;
+   you will be making more changes here in Step 5 and Step 7. 
+5. Open a terminal window with `kubectl` access to the cluster,
+   and restart the workspace pod:
 
-   Note that the filenames here are identical, but they are different files.
-   For this reason, our Dockerfile expects the downloaded copies of these files
-   to be named `r8.rpm` and `r6.rpm`, respectively. The following pair of `curl`
-   commands ensure they are downloaded properly and staged for our build:
    ```
-   curl -o r8.rpm -L https://download2.rstudio.org/server/centos8/x86_64/rstudio-server-rhel-1.3.959-x86_64.rpm
-   curl -o r6.rpm -L https://download2.rstudio.org/server/centos6/x86_64/rstudio-server-rhel-1.3.959-x86_64.rpm
+   kubectl get pods | grep ap-workspace | cut -d ' ' -f 1 | xargs kubectl delete pod
    ```
-4. Enter the Gravity environment, and change to the same directory.
-   ```
-   sudo gravity enter
-   cd /opt/anaconda/rstudio
-   ```
-5. Determine the name of the current editor image.
-   ```
-   IMAGENAME=$(docker image ls | grep ae-editor | grep -v rstudio | awk '{print $1":"$2;}')
-   echo $IMAGENAME
-   ```
-   Make sure this image name makes sense. It should look something like this:
-   ```
-   leader.telekube.local:5000/ae-editor:5.5.0-58-g403cc503d
-   ```
-   but the version number may be different.
-6. Build the new image and push it to the internal registry. Before we
-   run the `docker build` command we need to set the `FROM` statement
-   to match the value of WORKSPACE above, hence the `sed` command. You
-   could also edit the Dockerfile by hand if you wish.
-   ```
-   docker build --build-arg IMAGENAME=$IMAGENAME -t $IMAGENAME-rstudio .
-   docker push $IMAGENAME-rstudio
-   ```
-   By design, the name of the image is identical to the original, but with
-   an `-rstudio` suffix appended to the tag. This simplifies the
-   deployment editing steps below.
-7. Run the command
-   ```
-   docker image ls | grep $IMAGENAME-rstudio
-   ```
-   to verify that the image that was just created is visible.
-8. Exit the Gravity environment.
 
-### 2. Modify the workspace pod and app-images daemonset to point to the new image
+6. Monitor the new workspace pod using `kubectl get pods` and
+   wait for it to stabilize. *Leave this terminal window open
+   as well*, as you will use it in Step 5 and Step 7.
+   
+### Step 2. Launch the RStudio installer project
 
-1. Edit the deployment for the workspace container.
+As mentioned above, installation will proceed from within a standard
+AE5 session. So to begin the process, we complete the following steps:
+
+1. You will have received a link to an AE5 project archive under
+   separate cover. Download this project, and save it to the machine
+   from which you are accessing AE5.
+2. In a new browser window, log into AE5, and use the
+   "Create+ / Upload Project" dialog to upload the RStudio
+   Installation project archive that has been provided to you.
+3. We recommend using the JupyterLab editor for this project. To
+   change this, click on the project's name to be taken to the settings
+   page, change the Default Editor, and Save.
+4. Launch a session for this project.
+
+### Step 3. Obtain the RStudio Server binaries
+
+The files we need to install RStudio are RPM files hosted on the site
+`download2.rstudio.org`, and these must be pulled into the project session.
+Below are three different methods for accomplishing this.
+
+#### Downloading RStudio directly from AE5
+
+If your cluster has a direct connection to the internet, this is
+definitely the best approach.
+
+1. Launch a terminal window in the session created in Step 2.
+2. If you need to set proxy variables manually in order to
+   access the internet, do so now.
+3. Run the command `bash download_rstudio.sh`
+
+If the script completes successfully, you will have the binaries
+you need to proceed to step 4. The output of the script will
+look something like this:
+
+```
++------------------------+
+| AE5 RStudio Downloader |
++------------------------+
+- Target version: 2021.09.1-372
+- Downloading into the data directory
+- Downloading RHEL8/CentOS8 RPM file to data/rs-centos8.rpm
+- URL: https://download2.rstudio.org/server/centos8/x86_64/rstudio-server-rhel-2021.09.1-372-x86_64.rpm
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 58.3M  100 58.3M    0     0   250M      0 --:--:-- --:--:-- --:--:--  249M
+- Verifying data/rs-centos8.rpm
+- Downloading RHEL7/CentOS7 RPM file to data/rs-centos7.rpm
+- URL: https://download2.rstudio.org/server/centos7/x86_64/rstudio-server-rhel-2021.09.1-372-x86_64.rpm
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 58.3M  100 58.3M    0     0   193M      0 --:--:-- --:--:-- --:--:--  193M
+- Verifying data/rs-centos7.rpm
++------------------------+
+The RStudio binaries have been downloaded.
+You may now proceed with the installation step.
+See the README.md file for more details.
++------------------------+
+```
+
+#### Using the download script on another Unix server
+
+If you need to download the binaries on a separate machine first,
+the `download_rstudio.sh` script can simplify this process.
+
+1. Download the script `download_rstudio.sh` from the project
+   to your desktop.
+2. Move this script to a machine capable of running
+   `bash` and `curl` with connectivity to `download2.rstudio.org`.
+3. Run the command `bash download_rstudio.sh`
+4. If necessary, transfer the binaries `rs-centos8.rpm` and
+   `rs-centos8.rpm` to the machine from which you access AE5.
+5. Use the JuptyerLab upload button to upload both binaries
+   into the RStudio installer project.
+  
+#### Manually obtaining the files
+
+If it is not possible for you to use the `download_rstudio.sh`
+script, you can obtain the files manually. Note that the
+installation process requires two different RPM files that
+have identical filenames. For this reason, we require that
+each file is renamed after downloading, as described here.
+
+1. Download the CentOS 8 RPM:
+
    ```
-   kubectl edit deploy anaconda-enterprise-ap-workspace
+   https://download2.rstudio.org/server/centos8/x86_64/rstudio-server-rhel-2021.09.0-351-x86_64.rpm
    ```
-2. Search for the line containing the text `ae-editor`.
-   In a standard installation, this should be approximately line 60.
-3. Add the `-rstudio` suffix to the Docker image name listed there.
-   The end result should be that the name should exactly match the
-   value of the image just created.
-5. Save and exit the editor.
-6. Edit the daemonset for the app-images pods.
+
+2. Rename this file `rs-centos8.rpm`.
+3. Download the CentOS 7 RPM:
+
    ```
-   kubectl edit daemonset anaconda-enterprise-app-images
+   https://download2.rstudio.org/server/centos7/x86_64/rstudio-server-rhel-2021.09.0-351-x86_64.rpm
    ```
-6. Search for the line containing the text `ae-editor`.
-7. Add the `-rstudio` suffix to the Docker image name listed there,
-   as before matching the name of the new image.
-8. Save and exit the editor.
 
-The workspace pod and app-images pods will automatically restart.
-Users will not be able to launch new editor sessions, or create new
-projects, for approximately 1-2 minutes. When the workspace pod finishes
-initializing, and the app-image pods finish refreshing, they should be
-able to create projects and sessions as usual. RStudio will _not_ be
-functional yet, and the first new sessions created on each worker node
-may take a bit longer to start as the additional image layers are retrieved.
+4. Rename this file `rs-centos7.rpm`.
+5. If necessary, transfer both files to the machine from
+   which you are accessing AE5.
+6. Use the JuptyerLab upload button to upload both binaries
+   into the RStudio installer project.
+   
+### Step 4. Run the installation script
 
-To verify that the new image is being utilized, launch a session and verify
-that there is content in the directory `/usr/lib/rstudio-server/`.
+Once the files `rs-centos7.rpm` and `rs-centos8.rpm` are in place,
+the actual installation can proceed.
 
-### 3. Update the UI configuration to incude the RStudio option
+1. Launch a terminal window, or return to an existing one.
+2. If you have previously installed content into `/tools/rstudio`,
+   remove it now. The script will not proceed if there is any
+   content in that directory. For simplicity, you can remove
+   the entire directory; e.g., `rm -r /tools/rstudio`.
+3. Run the command `bash install_rstudio.sh`. Before performing
+   any modifications, the script verifies that all of its
+   prerequisites are met.
+4. Perform a basic verification of installation by running the script
+   `/tools/rstudio/start_rsession.sh`.
+   _This should exit with an error_, specifically an “Address already
+   in use” error of some sort. The key is to verify that this error
+   actually came from RStudio itself, which confirms that the
+   application is visible to Anaconda Enterprise.
 
-The final step is to add RStudio to the editor selection list presented
+The output of the installer script should look like this:
+
+```
++-----------------------+
+| AE5 RStudio Installer |
++-----------------------+
+- Install prefix: /tools/rstudio
+- Verifying data/rs-centos8.rpm
+- Verifying data/rs-centos7.rpm
+- Creating directory /tools/rstudio
+- Staging full RHEL8/CentOS8 package
+1069677 blocks
+- Staging RHEL7/CentOS7 rsession binary
+1069390 blocks
+- Moving files into final position
+- Installing support files
++-----------------------+
+RStudio installation is complete.
+Once you have verified the installation, feel free to
+shut down this session and delete the project.
++-----------------------+
+```
+
+### Step 5. Enable the RStudio editor option
+
+The next step is to add RStudio to the editor selection list presented
 by the UI.
-1. Launch a web browser, log into the Op Center, and navigate to
-   the "Configuration" tab.
-2. Make sure that the "Config maps" dropdown has selected the
-   `anaconda-enterprirse-anaconda-platform.yml` option. This should
-   be the default. You will see a single tab titled `anaconda-platform.yml`;
-   this is file to be edited.
-3. Search for the `anaconda-workspace:` section of this file. The quickest way to do so
-   is to focus the text editor and search for `anaconda-workspace:` (including the colon).
-   The default values in this section will look like this:
-   ```   
-    anaconda-workspace:
-      workspace:
-        icon: fa-anaconda
-        label: workspace
-        url: http://anaconda-enterprise-ap-workspace
-        options:
-          workspace:
-            tools:
-              notebook:
-                default: true
-                label: Jupyter Notebook
-              jupyterlab:
-                default: false
-                label: JupyterLab
-              zeppelin:
-                default: false
-                label: Apache Zeppelin
-   ```
-4. Add an RStudio section, so that the section looks as follows.
-   _It is essential that exact indentation, with spaces, is preserved._
-   ```
-    anaconda-workspace:
-      workspace:
-        icon: fa-anaconda
-        label: workspace
-        url: http://anaconda-enterprise-ap-workspace
-        options:
-          workspace:
-            tools:
-              notebook:
-                default: true
-                label: Jupyter Notebook
-              jupyterlab:
-                default: false
-                label: JupyterLab
-              zeppelin:
-                default: false
-                label: Apache Zeppelin
-              rstudio:
-                default: false
-                hidden: false
-                label: RStudio
-   ```
-   _NOTE:_ if your configuration already has an `rstudio` section, simply
-   make sure that the value of the `hidden:` parameter is `false:`.
-5. Once you have verified the correct formatting, click the "Save Changes" button.
-6. Return to the master node and restart the UI pod.
-   ```
-   kubectl get pods | grep anaconda-enterprise-ap-ui | \
-       cut -f 1 -d ' ' | xargs kubectl delete pods
-   ```
-   The UI pod should take less than a minute to refresh.
 
-There may be minor disruptions in UI responsiveness during this time, and
-some users may need to refresh their browsers, although this should not be
-necessary for views of running sessions or deployments. Once the refresh
-is complete, the RStudio editor will be present in the Default Editor
-drop-down on the project settings page.
+1. Return to the ConfigMap editor you used in Step 1.
+2. Search for the `rstudio:` section of this file. The
+   quickest way to do so is to focus the text editor and search for the
+   text `rstudio:` (including the colon). The default values
+   in this section will look like this:
+
+   ```
+             rstudio:
+               default: false
+               hidden: true
+               label: RStudio
+   ```
+   Change the value `hidden: true` to `hidden: false`.
+3. Once you have verified the correct formatting, click the "Save
+   Changes" button.
+4. In your `kubectl` terminal window, restart the UI pod.
+   This pod should take less than a minute to refresh.
+
+   ```
+   kubectl get pods | grep 'ap-ui-' | cut -d' ' -f1 | xargs kubectl delete pods
+   ```
+
+There may be minor disruptions in UI responsiveness during this time.
+If you have allowed users to continue working during this time, they
+may need to refresh their browsers, although this should
+not be necessary for views of running sessions or deployments. Once
+the UI pod stabilizes, in less than a minute, the RStudio editor
+will be present in the Default Editor drop-down on the
+project settings page.
 
 To help clarify the desired result in this step, we have attached below
-a screenshot of the Op Center for a typical cluster immediately
-after Step 5 is completed.
+a screenshot of the Op Center for a typical cluster immediately after
+Step 5 is completed.
 
 ![screenshot](screenshot.png)
 
-## Uninstallation
+### Step 6. Verify the installation
 
-If it is necessary to remove RStudio, we effectively reverse the steps above.
+1. Stop the session for your RStudio installer project.
+2. Go to the project Settings page.
+3. Select RStudio in the Default Editor dropdown, and click Save.
+4. Start a new session and wait for the editor to launch.
 
-1. _*Modify the UI configuration to remove the RStudio option.*_
-   - Time to complete: <5 minutes
-   - User disruption: none for existing sessions, deployments, or jobs.
-     Because the UI pod is restarted, users may experience a brief
-     disruption in UI responsiveness for 1-2 minutes.
-2. _Modify the deployment to point to the original image._
-   - Time to complete: <5 minutes
-   - User disruption: none for existing sessions, deployments, or jobs.
-     Creation of new sessions, as well as creation of new projects
-     from templates, samples, and uploads, will be disrupted for
-     approximately 1-2 minutes while the workspace pod restarts.
-     Once the workspace pod is fully operational again, and until
-     step 3 is completed, users should discern no functional
-     difference in operation if they were not using RStudio previously.
-     RStudio users _may_ need to modify their project settings to
-     select an editor besides RStudio.
-3. _Optionally remove the custom Docker image._
-   - Time to complete: varies; must wait for all users to stop using
-     the custom Docker image, or force their sessions to be stopped.
-   - User disruption: none, unless there is a need to force a session
-     stoppage to remove the image.
+Attached below is a screenshot of the RStudio editor upon launch.
 
-### 1. Modify the UI configuration to remove the RStudio option
+![screenshot](screenshot2.png)
 
-The first step in uninstallation is to remove the RStudio option from the UI.
-1. Launch a web browser, log into the Op Center, and navigate to
-   the "Configuration" tab.
-2. Make sure that the "Config maps" dropdown has selected the
-   `anaconda-enterprirse-anaconda-platform.yml` option. This should
-   be the default. You will see a single tab titled `anaconda-platform.yml`;
-   this is file to be edited.
-3. Search for the three-line `rstudio:` section of this file, and change the
-   line `hidden: false` to `hidden: true`. Do not change the indentation.
-4. Click the "Save Changes" button.
-5. Log into the master node and restart the UI pod.
-   ```
-   kubectl get pods | grep anaconda-enterprise-ap-ui | \
-       cut -f 1 -d ' ' | xargs kubectl delete pods
-   ```
-   The UI pod should take less than a minute to refresh.
+If for some reason, you experience issues with this:
 
-As before, there may be minor disruptions in UI responsiveness while the
-pod is being restarted. Some users may need to refresh their browsers,
-although this should not be necessary for views of running
-sessions or deployments. These changes should take effect
-once this step is complete:
-- All existing sessions, including those with RStudio, will continue
-  to run without change.
-- The "Default Editor" drop-down on the project Settings page will
-  no longer list RStudio as an option.
-- _Existing RStudio projects_ will continue to start with RStudio.
-  The "Default Editor" field may appear blank, however.
+1. Click on the "Logs" tab.
+2. Examine the full `editor` logs. Look in particular for a section
+   titled `AE5 R Session Manager`, and look for errors there and below.
+3. Copy the full content of this log so it can be shared with Anaconda.
+4. Stop the session completely.
+5. Go to the project's Settings page, and change the Default
+   Editor back to JupyterLab.
+6. If any obvious corrective action is called for, launch a new
+   session to make those changes.
 
-### 2. Revert the workspace deployment 
+Please feel free to reach out to Anaconda support if this occurs.
+Make sure to include a copy of the editor logs you obtained above.
 
-1. Edit the deployment for the workspace container.
-   ```
-   kubectl edit deploy anaconda-enterprise-ap-workspace
-   ```
-2. Search for the line containing `name: ANACONDA_PLATFORM_IMAGES_EDITOR`.
-   In a standard installation, this should be approximately line 60.
-3. _Remove_ the `-rstudio` suffix to the `value:` on the _next line_
-4. Save and exit the editor.
+### Step 7. Set the tool volume to read-only
 
-Once these steps are complete, tworkspace pod will automatically restart.
-Users will not be able to launch new editor sessions, or create new
-projects, for approximately 1-2 minutes. When the workspace pod finishes
-initializing, the following changes should take effect:
-- Users should be able to create projects and start sessions.
-- Existing sessions, including those running RStudio, will continue to function.
-- _New_ and _restarted_ sessions for projects with RStudio as the
-  selected editor will _fail_. To resolve this, the session must be
-  stopped, and an alternate editor selected and saved.
+1. Return to the ConfigMap editor.
+2. Search for the `/tools:` volume specification.
+3. Change `readOnly: false` to `readOnly: true`.
+4. Save the changed configuration, and exit the editor.
+5. Restart the workspace pod:
+≈
+6. Monitor the new workspace pod using `kubectl get pods` and
+   wait for it to stabilize.
+   
+## Uninstalling
 
-### 3. Optionally remove the custom Docker image
+Removing RStudio is a relatively simple process.
 
-The RStudio image does not consume a significant amount of additional
-disk space, and is therefore likely not to pose a problem if it is simply
-left in the Docker registry. However, if you do wish to remove the image
-completely, you can, _once it is no longer being used_. In particular it
-is not sufficient that there are no users using RStudio; even users of
-JupyterLab, Jupyter, and Zeppelin may be using the custom image.
+1. Return to the ConfigMap editor.
+2. Search for the three-line `rstudio:` section of this file, and change
+   the line `hidden: false` to `hidden: true`.
+3. Restart the UI pod:
 
-1. Scan the existing pods to see if any are using the RStudio image.
    ```
-   kubectl get pods \
-       -o=jsonpath='{range .items[*]}{"\n"}{.metadata.name}{":"}{range .spec.containers[*]}{.image}{","}{end}{end}{"\n"}' \
-       | sed -nE 's@([^:]+):.*-rstudio.*@\1@p'
+   kubectl get pods | grep ap-ui | cut -d ' ' -f 1 | xargs kubectl delete pods
    ```
-   If this search produces an empty result, then there are no sessions that
-   use an RStudio-enabled container. If there are any sessions, you must
-   wait for them to be restarted before proceeding.
-2. Enter the gravity environment.
-   ```
-   sudo gravity enter
-   ```
-3. Recall the name of the standard editor image.
-   ```
-   IMAGENAME=$(docker image ls | grep ae-editor.*rstudio | awk '{print $1":"$2;}')
-   echo $IMAGENAME
-   ```
-4. Remove the customized image.
-   ```
-   docker image rm $IMAGENAME
-   ```
-5. Exit gravity.
 
-As with the image creation step, this should not result in any user disruption,
-particular since it cannot be completed until all users must first have ceased
-using the custom image.
+This removes RStudio as an editor option for new projects, but
+existing projects will still be able to use the existing installation.
+
+If you need to permanently remove `/tools/rstudio`, complete the
+steps above, then:
+
+1. Stop all sessions that are currently running RStudio.
+2. Instruct users that they must modify all of their RStudio projects
+   to use a different editor (e.g., JupyterLab) instead. If they fail
+   to do so, sessions will fail to fully start.
+3. Remove the `/tools/rstudio` directory. If this can be performed
+   outside of an AE5 session, this will likely be the most convenient
+   approach. Otherwise, you must:
+   - Execute Step 1 to set the volume to read-write;
+   - Remove `/tools/rstudio` from within an AE5 session;
+   - Execute Step 7 to set the volume back to read-only.
+
+Removing the `/tools` volume altogether is very distruptive, so we
+do not recommend doing so. See `TOOLS.md` for more details.
+
+## Managing and upgrading
+
+Prior versions of the AE RStudio extension required building custom
+Docker images. Because this is no longer necessary, upgrading and
+managing the RStudio installation is much simpler.
+
+### Upgrading to a new version of AE5
+
+When upgrading AE5 itself, the RStudio installation will be unaffected.
+However, the current upgrade logic will cause the RStudio option to be
+re-hidden. To correct this, simply repeat Step 4 above to change
+`hidden: true` back to `hidden: false`.
+
+In future versions of AE5, it may be necessary to modify one or more of
+the support scripts added during the installation process; e.g.,
+`start_rstudio.sh` itself. If this proves necessary, we will supply the
+necessary instructions and replacement files, and the update will be
+much simpler than a reinstall.
+
+### Updating the RStudio installation
+
+If you wish to upgrade RStudio itself, the best approach is to perform
+a fresh installation.
+
+1. Ensure that all sessions using the RStudio editor are terminated.
+2. Complete Steps 1-3 of the standard installation process. If you
+   still have the AE5 project you used in the original installation,
+   feel free to re-use that. You may also need to edit the script
+   `download_rstudio.sh` to select a newer version of RStudio Server.
+3. Before proceeding with Step 4, move the existing RStudio installation
+   aside; e.g.
+   ```
+   mv /tools/rstudio /tools/rstudio.old
+   ```
+   If the new installation fails for some reason, this can simply be
+   moved back into place to avoid downtime.
+4. Now complete Step 4 to install the new version.
+5. Launch a new session with the RStudio editor to verify installation.
+6. Once satisfied, remove the old installation `/tools/rstudio.old`.
+
+### Installing RStudio on additional AE5 instances
+
+Once an initial, successful installation of RStudio has been achieved,
+installing it on an additional instance of AE5 can be greatly simplified.
+The basic principle is that the directory `/tools/rstudio` is *portable*,
+and can simply be transferred to another instance. So the bulk of
+the installation work is unnecessary.
+
+First, create an archive of an existing installation:
+
+1. Log into an instance of AE5 with a running RStudio installation.
+2. Launch a session, preferably using the JupyterLab editor.
+3. Launch a terminal window.
+4. Run the command: `tar cfz rstudio.tar.gz -C /tools rstudio`
+5. Download this file to your desktop. Once you have done so, you 
+   can remove the file from your AE5 session.
+
+Now move this archive to a new system:
+
+1. Execute Step 1 of the standard installation instructions to
+   ensure that the `/tools` volume has been properly configured
+   and set to read-write.
+2. Launch any session, preferably using the JupterLab editor.
+3. Upload the archive `rstudio.tar.gz` into the project.
+4. Launch a terminal window.
+5. If an existing RStudio installation is present, move it aside;
+   e.g., `mv /tools/rstudio /tools/rstudio.old`.
+6. Run the command: `tar xfz rstudio.tar.gz -C /tools`
+7. Run the script `/tools/rstudio/start_rstudio.sh` to verify installation.
+   As in Step 4 of the main installation sequence, an `Address already in use`
+   error is expected here.
+8. If this is the first installation of RStudio on the new system, repeat
+   Steps 5 and 6 above to enable the RStudio option and verify its operation.
+9. Once verified, you may remove `rstudio.tar.gz` from the session
+   as well as `/tools/rstudio.old`, if created.
+10. Execute Step 7 of the standard installation instructions to
+    ensure that the `/tools` volume is set back to read-only.
