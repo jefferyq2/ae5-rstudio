@@ -12,3 +12,4 @@ RUN set -ex \
 
 FROM ${IMAGENAME}
 COPY --from=build /usr/lib/rstudio-server/ /usr/lib/rstudio-server/
+RUN sed -i '/find.*chown/d' scripts/startup.sh
