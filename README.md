@@ -96,20 +96,31 @@ the new image will be minimal.
    to verify that the image that was just created is visible.
 8. Exit the Gravity environment.
 
-### 2. Modify the workspace pod to point to the new image
+### 2. Modify the workspace pod and app-images daemonset to point to the new image
 
 1. Edit the deployment for the workspace container.
    ```
    kubectl edit deploy anaconda-enterprise-ap-workspace
    ```
-2. Search for the line containing `name: ANACONDA_PLATFORM_IMAGES_EDITOR`.
+2. Search for the line containing the text `ae-editor`.
    In a standard installation, this should be approximately line 60.
-3. Add the `-rstudio` suffix to the `value:` on the _next line_
-4. Save and exit the editor.
+3. Add the `-rstudio` suffix to the Docker image name listed there.
+   The end result should be that the name should exactly match the
+   value of the image just created.
+5. Save and exit the editor.
+6. Edit the daemonset for the app-images pods.
+   ```
+   kubectl edit daemonset anaconda-enterprise-app-images
+   ```
+6. Search for the line containing the text `ae-editor`.
+7. Add the `-rstudio` suffix to the Docker image name listed there,
+   as before matching the name of the new image.
+8. Save and exit the editor.
 
-The workspace pod will automatically restart. Users will not be able to
-launch new editor sessions, or create new projects, for approximately 1-2
-minutes. When the workspace pod finishes initializing, they should be
+The workspace pod and app-images pods will automatically restart.
+Users will not be able to launch new editor sessions, or create new
+projects, for approximately 1-2 minutes. When the workspace pod finishes
+initializing, and the app-image pods finish refreshing, they should be
 able to create projects and sessions as usual. RStudio will _not_ be
 functional yet, and the first new sessions created on each worker node
 may take a bit longer to start as the additional image layers are retrieved.
