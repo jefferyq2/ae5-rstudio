@@ -2,19 +2,27 @@
 
 echo "- AE5 RStudio Server Installer"
 
-# If the environment variable RSTUDIO_VERSION is empty, this will determine
-# the latest compatible version of RStudio (as of this writing). To override
-# specify the RSTUDIO_VERSION variable prior to calling this script.
-[ -x /usr/lib64/libpq.so.5 ] && [ -x /usr/bin/sqlite3 ] || force_13=1.3.1093
-[ $RSTUDIO_VERSION ] || RSTUDIO_VERSION=${force_13:-1.4.1717}
-echo "- Target version: ${RSTUDIO_VERSION}"
-if [[ $RSTUDIO_VERSION =~ ^1[.]4[.] && $force_13 ]]; then
-    echo "ERROR: This version of AE5 is not compatible with RStudio $RSTUDIO_VERSION"
-    echo "The latest compatible version is RStudio $force_13"
+if ! grep -q /tools/ /opt/continuum/scripts/start_user.sh; then
+    echo "ERROR: This version of the RStudio installer requires AE5.5.1 or later."
+    exit -1
+fi
+    
+CURRENT_DIR=$PWD
+SOURCE_DIR=$(dirname "${BASH_SOURCE[0]}")
+missing=
+for sfile in Rprofile rsession.conf rsession.sh start_rstudio.sh; do
+    spath=$CURRENT_DIR/$sfile
+    [ -f $spath ] || spath=$SOURCE_DIR/$sfile
+    [ -f $spath ] || missing="$missing $sfile"
+done
+if [ ! -z "$missing" ]; then
+    echo "ERROR: missing support files:$missing"
     exit -1
 fi
 
-[ $RSTUDIO_PREFIX ] || RSTUDIO_PREFIX=/usr/lib/rstudio-server
+[ $RSTUDIO_VERSION ] || RSTUDIO_VERSION=2021.09.0-351
+echo "- Target version: ${RSTUDIO_VERSION}"
+[ $RSTUDIO_PREFIX ] || RSTUDIO_PREFIX=/tools/rstudio
 echo "- Install prefix: ${RSTUDIO_PREFIX}"
 if [ ! -d $RSTUDIO_PREFIX ]; then
     echo "ERROR: install location does not exist"
@@ -43,15 +51,12 @@ elif [ ! -w $RSTUDIO_WORKDIR ]; then
     exit -1
 fi
 
-CURRENT_DIR=$PWD
 pushd $RSTUDIO_WORKDIR
 
 # We actually need two RPM packages: the CentOS 8 version is the version we
-# use in full, but we need to extract a single binary (rsession) from the CentOS 6/7
+# use in full, but we need to extract a single binary (rsession) from the CentOS 7
 # version to offer compatibility with older versions of R.
-shim_ver=7
-[[ $RSTUDIO_VERSION =~ ^1[.][23][.] ]] && shim_ver=6
-for os_ver in 8 $shim_ver; do
+for os_ver in 8 7; do
     what_os="RHEL${os_ver}/CentOS${os_ver}"
     osdir=centos${os_ver}
     fname=rs-$osdir.rpm
@@ -89,6 +94,15 @@ echo "- Moving files into final position"
 mv $RSTUDIO_PREFIX/staging8/usr/lib/rstudio-server/* $RSTUDIO_PREFIX
 mv $RSTUDIO_PREFIX/staging7/usr/lib/rstudio-server/bin/rsession $RSTUDIO_PREFIX/bin/rsession10
 rm -rf $RSTUDIO_PREFIX/{staging7,staging8}
+
+echo "- Installing support files"
+missing=
+for sfile in Rprofile rsession.conf rsession.sh start_rstudio.sh; do
+    spath=$CURRENT_DIR/$sfile
+    [ -f $spath ] || spath=$SOURCE_DIR/$sfile
+    cp $spath $RSTUDIO_PREFIX
+done
+chmod +x $RSTUDIO_PREFIX/{start_rstudio.sh,rsession.sh}
 
 if [ $cleanup ]; then
     echo "- Cleaning up temporary files"
