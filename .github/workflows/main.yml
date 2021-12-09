@@ -25,15 +25,17 @@ jobs:
         echo ".markdown-body { font-size: 11pt; }" > ../style.css
         mdpdf README.md --format=letter --style=../style.css --gh-style
         mdpdf TOOLS.md --format=letter --style=../style.css --gh-style
-        [[ "$GITHUB_REF" == refs/tags/* ]] && suffix=-$GITHUB_REF_NAME
-        [[ -z "$GITHUB_HEAD_REF" ]] || suffix=-test
-        anaconda-project archive rstudio-installer${suffix}.tar.bz2
+        anaconda-project archive rstudio-installer.tar.bz2
     - name: Upload archive
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{secrets.AWS_DEFAULT_REGION}}
       run: |
-        aws s3 cp rstudio-installer*.tar.bz2 s3://airgap.svc.anaconda.com/misc/ --acl public-read --region $AWS_DEFAULT_REGION
-        aws s3 cp README.pdf s3://airgap.svc.anaconda.com/misc/rstudio-install.pdf --acl public-read --region $AWS_DEFAULT_REGION
-        aws s3 cp TOOLS.pdf s3://airgap.svc.anaconda.com/misc/tools-volume.pdf --acl public-read --region $AWS_DEFAULT_REGION
+        [[ "$GITHUB_REF" == refs/tags/* ]] && SUFFIX=-$GITHUB_REF_NAME
+        [[ -z "$GITHUB_HEAD_REF" ]] || SUFFIX=-test
+        URL=s3://airgap.svc.anaconda.com/misc
+        ARGS= --acl public-read --region $AWS_DEFAULT_REGION
+        aws s3 cp rstudio-installer.tar.bz2 $URL/rstudio-installer$SUFFIX.tar.bz2 $ARGS
+        aws s3 cp README.pdf $URL/rstudio-install$SUFFIX.pdf $ARGS
+        aws s3 cp TOOLS.pdf $URL/tools-volume$SUFFIX.pdf $ARGS
