@@ -15,6 +15,9 @@ While any file share that meets the criteria listed in the next
 section will be acceptable, we offer two recommendations below
 to re-use existing volumes effectively.
 
+The latest approved version of this document in PDF form can always
+be found at this link: [tools-volume.pdf](http://airgap.svc.anaconda.com.s3.amazonaws.com/misc/tools-volume.pdf)
+
 # General requirements
 
 * We recommend that the volume have at least 10GB of space.

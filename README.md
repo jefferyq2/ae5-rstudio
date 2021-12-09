@@ -18,6 +18,13 @@ to be followed first. See the document [TOOLS.md](TOOLS.md) for
 more details, and make sure that work is completed before
 proceeding with the instructions here.
 
+The latest approved versions of the RStudio support files can
+always be found at these links.
+
+- This file, in PDF form: [rstudio-install.pdf](http://airgap.svc.anaconda.com.s3.amazonaws.com/misc/rstudio-install.pdf)
+- Tools volume documentation: [tools-volume.pdf](http://airgap.svc.anaconda.com.s3.amazonaws.com/misc/tools-volume.pdf)
+- Installer project: [rstudio-installer.tar.bz2](http://airgap.svc.anaconda.com.s3.amazonaws.com/misc/rstudio-installer.tar.bz2)
+
 ## Installation
 
 We have broken the installation process into the following steps:
@@ -69,9 +76,9 @@ or deployments.
 As mentioned above, installation will proceed from within a standard
 AE5 session. So to begin the process, we complete the following steps:
 
-1. You will have received a link to an AE5 project archive under
-   separate cover. Download this project, and save it to the machine
-   from which you are accessing AE5.
+1. Download the project and save it to the machine
+   from which you are accessing AE5. A link is provided
+   in the top section of this document.
 2. In a new browser window, log into AE5, and use the
    "Create+ / Upload Project" dialog to upload the RStudio
    Installation project archive that has been provided to you.
