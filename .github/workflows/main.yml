@@ -36,7 +36,7 @@ jobs:
         if [[ "$GITHUB_REF" == refs/tags/* ]]; then
           SUFFIX=-$GITHUB_REF_NAME
           SUFFIX2=""
-        elif [[ -z "$GITHUB_HEAD_REF" ]]; then
+        elif [ -z "$GITHUB_HEAD_REF" ]; then
           SUFFIX=-dev
         else
           SUFFIX=-test
@@ -47,5 +47,5 @@ jobs:
           aws s3 cp rstudio-installer.tar.bz2 $URL/rstudio-installer$sfx.tar.bz2 $ARGS
           aws s3 cp README.pdf $URL/rstudio-install$sfx.pdf $ARGS
           aws s3 cp TOOLS.pdf $URL/tools-volume$sfx.pdf $ARGS
-          [ $SUFFIX2 = "no" ] && break
+          [ "$SUFFIX2" = "no" ] && break
         done
