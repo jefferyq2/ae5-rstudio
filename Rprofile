@@ -41,7 +41,7 @@
         message('Restarting R...')
         .rs.api.restartSession()
       }
-    } else if (Sys.getenv('CONDA_PROJECT_ERR') == 'yes') {
+    } else if (desired_env == '@ERROR@') {
       message_wrap(
         'ERROR: an unexpected error prevented the startup script',
         'from determining the desired conda environment. This is',

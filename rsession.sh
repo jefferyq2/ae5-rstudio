@@ -39,37 +39,40 @@ echo "|   LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
 # Now determine the environment dictacted by the project, as
 # given by the first environment in anaconda-project.yml. If
 # this file is broken, we revert to the fallback environment
-export CONDA_DESIRED_ENV=$(cd $OCP && $OCCB/anaconda-project list-env-specs </dev/null | grep -A1 ^= | tail -1)
-if [ "$CONDA_DESIRED_ENV" ]; then
-    echo "| Target environment: $CONDA_DESIRED_ENV"
-else
-    echo "| Missing or corrupt anaconda-project.yml"
-    export CONDA_DESIRED_ENV=$CONDA_FALLBACK_ENV
-    export CONDA_PROJECT_ERR=yes
-fi
-
-# Switch environments if necessary
-if [ "$CONDA_DESIRED_ENV" == "$CONDA_DEFAULT_ENV" ]; then
-    echo "| No environment change needed"
-else
-    # In theory we should only need source activate here. But for some reason
-    # the activate/deactivate scripts are failing and LDFLAGS is not changed
-    # when it should be. This matters below because LDFLAGS may contain paths
-    # that point to the old environment.
-    source $OCAB/deactivate
-    unset LDFLAGS
-    if source $OCAB/activate $CONDA_DESIRED_ENV; then
-        echo "| Activation of environment succeeded"
-    else
-        echo "| ERROR: Activation of environment failed"
+CONDA_DESIRED_ENV=
+all_envs=$($OCAB/python $TOOL_HOME/default_env.py $OCP)
+echo "| Project environments: $all_envs"
+for env in $all_envs $CONDA_FALLBACK_ENV; do
+    [ "$CONDA_DESIRED_ENV" ] || CONDA_DESIRED_ENV=$env
+    if [ "$env" = "@ERROR@" ]; then
+        echo "| Missing or corrupt anaconda-project.yml"
+        env=$CONDA_FALLBACK_ENV
     fi
-fi
-
-# Return to the fallback environment if the new environment does not have R
-if [ ! -x "$CONDA_PREFIX/lib/R/lib/libR.so" ]; then
-    echo "| ERROR: R not found; activating fallback environment"
-    source $OCAB/activate $CONDA_FALLBACK_ENV
-fi
+    echo "| Attempting to use env: $env"
+    if [ "$env" = "$CONDA_DEFAULT_ENV" ]; then
+        echo "|  No activation needed"
+    else
+        # In theory we should only need source activate here. But for some reason
+        # the activate/deactivate scripts are failing and LDFLAGS is not changed
+        # when it should be. This matters below because LDFLAGS may contain paths
+        # that point to the old environment.
+        source $OCCB/deactivate 2>/dev/null
+        unset LDFLAGS
+        if source $OCCB/activate $env; then
+            echo "|  Activation of environment succeeded"
+        else
+            echo "|  Activation of environment FAILED"
+            env="@ERROR@"
+        fi
+    fi
+    if [[ "$env" != "@ERROR@" && -x "$CONDA_PREFIX/lib/R/lib/libR.so" ]]; then
+        echo "|  Presence of R library verified"
+        break
+    else
+        echo "|  R library NOT PRESENT in this environment"
+    fi
+done
+export CONDA_DESIRED_ENV
 
 # A number of the environment variables still point to the R environment that
 # was visible to RStudio when it was first run. Modify those to point to the
@@ -79,7 +82,6 @@ if [ "$R_HOME" != "$CONDA_PREFIX/lib/R" ]; then
     R_PREFIX=$(dirname $(dirname $R_HOME))
     vars=$(env | sed -nE 's@^([^=]=)(.*)@\1"\2"@;/^CONDA/!'"s@$R_PREFIX/@$CONDA_PREFIX/@gp")
     while read -r line; do
-        echo "|   $line"
         eval "export $line"
     done <<< "$vars"
 else

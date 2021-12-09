@@ -1,0 +1,23 @@
+anaconda-project-local.yml
+
+*.pyc
+*.pyd
+*.pyo
+__pycache__/
+.cache/
+
+.ipynb_checkpoints/
+.Trash-*/
+
+/tmp/
+/envs/
+.heartbeat
+heartbeat.
+# These lines were added by AE5 so that your project will
+# ignore the convenience symbolic links it has placed. If
+# you replace those links with non-empty directories, the
+# "!" lines will ensure those directories are not ignored.
+/data
+!/data/
+/user
+!/user/
