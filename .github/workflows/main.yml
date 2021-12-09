@@ -18,12 +18,13 @@ jobs:
         fetch-depth: 0
     - name: Build the archive
       run: |
-        echo "GITHUB_REF: $GITHUB_REF"
-        echo "GITHUB_REF_NAME: $GITHUB_REF_NAME"
-        echo "GITHUB_REF_TYPE: $GITHUB_REF_TYPE"
-        echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
         source $CONDA/bin/activate
-        conda install -y anaconda-project
+        conda install -y anaconda-project nodejs
+        npm install -g mdpdf
+        sed -i.bak -E 's@(extensions:.*)@simpleLineBreaks: false, \1@' $(npm root -g)/mdpdf/src/index.js
+        echo ".markdown-body { font-size: 11pt; }" > ../style.css
+        mdpdf README.md --format=letter --style=../style.css --gh-style
+        mdpdf TOOLS.md --format=letter --style=../style.css --gh-style
         [[ "$GITHUB_REF" == refs/tags/* ]] && suffix=-$GITHUB_REF_NAME
         [[ -z "$GITHUB_HEAD_REF" ]] || suffix=-test
         anaconda-project archive rstudio-installer${suffix}.tar.bz2
@@ -32,4 +33,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{secrets.AWS_DEFAULT_REGION}}
-      run: aws s3 cp rstudio-installer*.tar.bz2 s3://airgap.svc.anaconda.com/misc/ --acl public-read --region us-east-1
+      run: |
+        aws s3 cp rstudio-installer*.tar.bz2 s3://airgap.svc.anaconda.com/misc/ --acl public-read --region $AWS_DEFAULT_REGION
+        aws s3 cp README.pdf s3://airgap.svc.anaconda.com/misc/rstudio-install.pdf --acl public-read --region $AWS_DEFAULT_REGION
+        aws s3 cp TOOLS.pdf s3://airgap.svc.anaconda.com/misc/tools-volume.pdf --acl public-read --region $AWS_DEFAULT_REGION
