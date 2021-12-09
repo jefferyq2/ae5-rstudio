@@ -32,8 +32,13 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{secrets.AWS_DEFAULT_REGION}}
       run: |
-        [[ "$GITHUB_REF" == refs/tags/* ]] && SUFFIX=-$GITHUB_REF_NAME
-        [[ -z "$GITHUB_HEAD_REF" ]] || SUFFIX=-test
+        if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          SUFFIX=-$GITHUB_REF_NAME
+        elif [[ -z "$GITHUB_HEAD_REF" ]]; then
+          SUFFIX=-latest
+        else
+          SUFFIX=-test
+        fi
         URL=s3://airgap.svc.anaconda.com/misc
         ARGS="--acl public-read --region $AWS_DEFAULT_REGION"
         aws s3 cp rstudio-installer.tar.bz2 $URL/rstudio-installer$SUFFIX.tar.bz2 $ARGS
