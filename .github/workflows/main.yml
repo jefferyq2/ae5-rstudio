@@ -11,26 +11,36 @@ on:
 jobs:
   project:
     runs-on: ubuntu-latest
-    needs: package
     steps:
     - name: Retrieve the source code
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
     - name: Build the archive
+      run: |
+        source $CONDA/bin/activate
+        conda install -y anaconda-project nodejs
+        npm install -g mdpdf
+        sed -i.bak -E 's@(extensions:.*)@simpleLineBreaks: false, \1@' $(npm root -g)/mdpdf/src/index.js
+        echo ".markdown-body { font-size: 11pt; }" > ../style.css
+        mdpdf README.md --format=letter --style=../style.css --gh-style
+        mdpdf TOOLS.md --format=letter --style=../style.css --gh-style
+        anaconda-project archive rstudio-installer.tar.bz2
+    - name: Upload archive
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{secrets.AWS_DEFAULT_REGION}}
       run: |
-        echo "GITHUB_REF: $GITHUB_REF"
-        echo "GITHUB_REF_NAME: $GITHUB_REF_NAME"
-        echo "GITHUB_REF_TYPE: $GITHUB_REF_TYPE"
-        source $CONDA/bin/activate
-        conda install -y anaconda-project
-        [[ "$GITHUB_REF" == refs/tags/* ]] && suffix=-$GITHUB_REF_NAME
-        anaconda-project archive rstudio-installer${suffix}.tar.bz2
-        constructor
-    - name: Upload archive
-      if: github.event_name == 'tag'
-      run: aws s3 cp rstudio-installer*.tar.bz2 s3://airgap.svc.anaconda.com/misc/ --acl public-read --region us-east-1
+        if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          SUFFIX=-$GITHUB_REF_NAME
+        elif [[ -z "$GITHUB_HEAD_REF" ]]; then
+          SUFFIX=-latest
+        else
+          SUFFIX=-test
+        fi
+        URL=s3://airgap.svc.anaconda.com/misc
+        ARGS="--acl public-read --region $AWS_DEFAULT_REGION"
+        aws s3 cp rstudio-installer.tar.bz2 $URL/rstudio-installer$SUFFIX.tar.bz2 $ARGS
+        aws s3 cp README.pdf $URL/rstudio-install$SUFFIX.pdf $ARGS
+        aws s3 cp TOOLS.pdf $URL/tools-volume$SUFFIX.pdf $ARGS
