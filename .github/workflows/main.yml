@@ -17,10 +17,6 @@ jobs:
       with:
         fetch-depth: 0
     - name: Build the archive
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: ${{secrets.AWS_DEFAULT_REGION}}
       run: |
         echo "GITHUB_REF: $GITHUB_REF"
         echo "GITHUB_REF_NAME: $GITHUB_REF_NAME"
@@ -32,4 +28,8 @@ jobs:
         [[ -z "$GITHUB_HEAD_REF" ]] || suffix=-test
         anaconda-project archive rstudio-installer${suffix}.tar.bz2
     - name: Upload archive
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{secrets.AWS_DEFAULT_REGION}}
       run: aws s3 cp rstudio-installer*.tar.bz2 s3://airgap.svc.anaconda.com/misc/ --acl public-read --region us-east-1
