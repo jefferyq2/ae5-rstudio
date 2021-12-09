@@ -35,7 +35,7 @@ jobs:
         [[ "$GITHUB_REF" == refs/tags/* ]] && SUFFIX=-$GITHUB_REF_NAME
         [[ -z "$GITHUB_HEAD_REF" ]] || SUFFIX=-test
         URL=s3://airgap.svc.anaconda.com/misc
-        ARGS= --acl public-read --region $AWS_DEFAULT_REGION
+        ARGS="--acl public-read --region $AWS_DEFAULT_REGION"
         aws s3 cp rstudio-installer.tar.bz2 $URL/rstudio-installer$SUFFIX.tar.bz2 $ARGS
         aws s3 cp README.pdf $URL/rstudio-install$SUFFIX.pdf $ARGS
         aws s3 cp TOOLS.pdf $URL/tools-volume$SUFFIX.pdf $ARGS
