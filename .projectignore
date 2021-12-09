@@ -12,3 +12,6 @@ __pycache__/
 
 # Spyder stuff
 /.spyderproject
+
+# GitHib actions
+.github/

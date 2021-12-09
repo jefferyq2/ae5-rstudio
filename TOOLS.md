@@ -132,3 +132,25 @@ JupyterLab, and open a terminal window. Manually confirm that the
 directory `/tools` exists. If you have set `readOnly: false` in
 preparation for installation, make sure the directory is writable.
 
+# Removing the volume
+
+Removing the `/tools` volume, once it has begun to be used, is
+very disruptive. In particular, removing the volume will interrupt 
+all active user sessions, deployments, and scheduled jobs that were
+created with the volume in place. (Indeed, this is the case for
+any shared volume.) For this reason, we recommend leaving it in
+place even if its content is removed.
+
+If the volume *must* be removed, here are the steps required.
+
+1. Shut down *all* sessions at the AE5 level.
+2. Terminate all deployments and jobs, including scheduled jobs.
+   It is *not* sufficient to simply pause them; they must be
+   re-created.
+3. Edit the ConfigMap and remove the `/tools` volume from
+   the `volumes:` section.
+4. Restart the workspace and deploy pods.
+5. Re-create any deployments and jobs at the AE5 level.
+
+Because of the complexity of this operation, it is wise to
+consider scheduling time with Anaconda's support team to assist.
