@@ -1,5 +1,13 @@
 # Adding RStudio support to AE5.5.1+
 
+> **NOTE**: there is an [operating-system issue](https://bugzilla.redhat.com/show_bug.cgi?id=1909037) 
+> that prevents some R environments from working with RStudio.
+> This has been corrected in AE5.5.2. For AE5.5.1, there is a
+> simple workaround: add the conda package `openldap=2.4` to
+> the environment in question (and, if appropriate, your 
+> `anaconda-project.yml` specification) *before* switching
+> to the RStudio editor.
+
 This repository allows AE5 customers to install
 [RStudio](https://www.rstudio.com/) and use it within AE5.
 In order to fully respect RStudio's licensing terms, Anaconda
