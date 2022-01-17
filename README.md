@@ -311,7 +311,11 @@ Make sure to include a copy of the editor logs you obtained above.
 3. Change `readOnly: false` to `readOnly: true`.
 4. Save the changed configuration, and exit the editor.
 5. Restart the workspace pod:
-≈
+
+   ```
+   kubectl get pods | grep ap-workspace | cut -d ' ' -f 1 | xargs kubectl delete pod
+   ```
+
 6. Monitor the new workspace pod using `kubectl get pods` and
    wait for it to stabilize.
    
