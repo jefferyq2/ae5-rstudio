@@ -62,7 +62,7 @@ or deployments.
 
 ***NOTE:*** if you are performing this work on AE 5.5.2 or later,
 the steps have been simplified. Look for annotations marked
-*"5.5.1"* or *"5.5.2+"* for modifications specific to those version.
+*"5.5.1"* or *"5.5.2+"* for steps that are specific to each version.
 
 ### Step 1. Set the tool volume to read-write (5.5.1)
 
