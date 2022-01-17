@@ -1,9 +1,14 @@
 # Creating the tools volume
 
-Starting with version 5.5.1, Anaconda Enterprise has the ability
-to take advantage of customized versions of in-browser IDEs such as
+**NOTE:** *Version 5.5.2 has incorporated formal support or the tools
+volume into the standard Managed Persistence mechanism. If you are
+installing 5.5.2 or upgrading to it, please skip directly to the*
+**Version 5.5.2 Update** *section below.*
+
+Starting with version 5.5.1, Anaconda Enterprise has been given the
+ability to harness customized versions of in-browser IDEs such as
 VSCode, RStudio, Zeppelin, and Jupyter. These tools are expected
-to live in a special volume mounted at the `/tools` mount point,
+to be hosted on special volume mounted at the `/tools` mount point,
 provisioned as a standard AE5
 [external file share](https://enterprise-docs.anaconda.com/en/latest/admin/advanced/nfs.html).
 
@@ -157,3 +162,91 @@ If the volume *must* be removed, here are the steps required.
 
 Because of the complexity of this operation, it is wise to
 consider scheduling time with Anaconda's support team to assist.
+
+# Version 5.5.2 Update
+
+With Version 5.5.2, we have elected to incorporate formal support
+for the `/tools` volume directly into our managed peristence 
+functionality. Specifically, `tools` is now a formal entry in the
+persistence configuration alongside `projects`, `environments`, and
+`gallery`. This approach greatly simplifies the process of managing
+the installation of additional IDEs. In particular, AE5 controls the
+read-write status of `tools` the same way as it does for `environments`
+and `gallery`, simplifying the management of this volume.
+
+**If you are performing a fresh installation of 5.5.2,**
+please follow our improved installation instructions. You wil be able
+to activate managed persistence during the installation process.
+
+**If you are upgrading a cluster that does not have
+managed persistence**, complete the upgrade to 5.5.2 first *before*
+activating managed persistence.
+
+**If you are upgrading a cluster with managed peristence**,
+complete the upgrade first. This will preserve your existing managed
+persistence configuration. Once this is complete, it is straightforward
+to add the `tools` volume to your `peristence:` section. For example,
+suppose your persistence configuration looks like this:
+
+```
+persistence:
+   projects:
+     pvc: anaconda-persistence
+     subPath: projects
+   ...
+```
+
+to add support for the `tools` volume, simply add another section like so:
+
+```
+persistence:
+   tools:
+     pvc: anaconda-persistence
+     subPath: tools
+   projects:
+     pvc: anaconda-persistence
+     subPath: projects
+   ...
+```
+
+Once the change has been made, restart the `workspace` pod so that
+all future sessions will be given access to the `tools` volume.
+
+**If you are upgrading a cluster with an existing tools volume**,
+complete the upgrade to 5.5.2 first. You can continue to use the volume
+with no further modification. However, we do recommend migrating your
+configuration, so that the managed persietence framework can "adopt"
+your existing tools volume. To do so, you must move the volume specification
+`volumes:` section of the ConfigMap to the `persistence:` section.
+For instance, suppose your `volumes:` configuration looks like this:
+
+```
+volumes:
+   /tools:
+     pvc: anaconda-persistence
+     subPath: projects
+     readOnly: true
+```
+
+The new configuration removes this entry from `volumes:` and adds it
+to the `persistence:` section, like so:
+
+```
+persistence:
+   tools:
+     pvc: anaconda-persistence
+     subPath: tools
+   projects:
+     ...
+```
+
+Once you have saved the changes to your ConfigMap, restart both the
+`workspace` and `deploy` pods so that the changes take effect. 
+Some additional notes:
+
+* You can make this change even if your tools volume is different than
+  your projects, environments, and/or gallery volume.
+* Do not include the `readOnly:` flag in the `persistence` section. AE5.5.2
+  will mount the tools volume as read-only for your normal users, and
+  read-write for your storage manager (typically the `anaconda-enterprise`
+  user).
