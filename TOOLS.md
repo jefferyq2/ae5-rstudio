@@ -1,9 +1,14 @@
 # Creating the tools volume
 
-Starting with version 5.5.1, Anaconda Enterprise has the ability
-to take advantage of customized versions of in-browser IDEs such as
+**NOTE:** *Version 5.5.2 has incorporated formal support or the tools
+volume into the standard Managed Persistence mechanism. If you are
+installing 5.5.2 or upgrading to it, please skip directly to the*
+**Version 5.5.2 Update** *section below.*
+
+Starting with version 5.5.1, Anaconda Enterprise has been given the
+ability to harness customized versions of in-browser IDEs such as
 VSCode, RStudio, Zeppelin, and Jupyter. These tools are expected
-to live in a special volume mounted at the `/tools` mount point,
+to be hosted on special volume mounted at the `/tools` mount point,
 provisioned as a standard AE5
 [external file share](https://enterprise-docs.anaconda.com/en/latest/admin/advanced/nfs.html).
 
@@ -157,3 +162,95 @@ If the volume *must* be removed, here are the steps required.
 
 Because of the complexity of this operation, it is wise to
 consider scheduling time with Anaconda's support team to assist.
+
+# Version 5.5.2 Update
+
+With Version 5.5.2, we have elected to incorporate formal support
+for the Tools volume directly into our managed peristence 
+functionality. Specifically, `tools` is now a formal entry in the
+persistence configuration alongside `projects`, `environments`, and
+`gallery`. This approach greatly simplifies the process of managing
+the installation of additional IDEs. In particular, AE5 manages the
+read-write status of `tools` the same way as it does for `environments`
+and `gallery`, simplifying installing or updating tools.
+
+**If you are performing a fresh installation of 5.5.2,**
+please follow the standard method for activating Managed Persistence.
+This documentation has been updated to include the addition of
+support for the `tools` volume. In particular, there is a new,
+streamlined configuration method that automatically partitions the
+managed persistence volume into `tools`, `projects`, `environments`,
+and `gallery` for you.
+
+**If you are performing an in-place upgrade to 5.5.2, and do not
+have managed persistence enabled yet**, complete the upgrade first,
+and then follow the standard method for activating Managed Persistence,
+which now includes the `tools` volume support.
+
+**If you are performing an in-place upgrade to 5.5.2, and you have
+enabled managed persistence but not the tools volume**, complete the
+upgrade first, which will preserve your existing managed persistence
+configuration. Once the upgrade is complete, you will just need to
+add a `tools` volume to your `peristence:` section. For example, if
+your persistence configuration looks like this:
+
+```
+persistence:
+   projects:
+     pvc: anaconda-persistence
+     subPath: projects
+   ...
+```
+
+Your modification would simply add a new section, like so: 
+
+```
+persistence:
+   tools:
+     pvc: anaconda-persistence
+     subPath: tools
+   projects:
+     pvc: anaconda-persistence
+     subPath: projects
+   ...
+```
+
+Once the change has been made, you need to simply restart the
+`workspace` pod and all future sessions will be given access to the
+`tools` volume.
+
+**If you are upgrading to 5.5.2 and already have tools configured,**
+you can continue to use your existing volume without change. However,
+we recommend migrating your configuration so that the Managed Persistence
+framework "adopts" your existing tools volume. To do so, you must simply
+move the volume specification from the `volumes:` section of the ConfigMap
+to the `persistence:` section. For instance, suppose your `volumes:` configuration looks like this:
+
+```
+volumes:
+   /tools:
+     pvc: anaconda-persistence
+     subPath: projects
+     readOnly: true
+```
+
+The new configuration removes this entry from `volumes:` and replacimng
+
+```
+persistence:
+   tools:
+     pvc: anaconda-persistence
+     subPath: tools
+   projects:
+     ...
+```
+
+Once you have finished saved the changes to your ConfigMap, restart both
+your workspace and deploy pods so that the changes take effect. Some notes:
+
+* You can make this change even if your tools volume is different than
+  your projects, environments, and/or gallery volume.
+* Do not include the `readOnly:` flag in the `persistence` section. AE5.5.2
+  will mount the tools volume as read-only for your normal users, and
+  read-write for your storage manager (typically the `anaconda-enterprise`
+  user).

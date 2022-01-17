@@ -37,13 +37,13 @@ always be found at these links.
 
 We have broken the installation process into the following steps:
 
-1. _Set the tool volume to read-write._
+1. _Set the tool volume to read-write._ **(5.5.1 only)**
 2. _Launch the RStudio installation project._
 3. _Obtain the RStudio server binaries._
 4. _Run the installation script._
 5. _Enable the RStudio editor option._
 6. _Verify the installation._
-7. _Set the tool volume to read-only._
+7. _Set the tool volume to read-only._ **(5.5.1 only)**
 
 The steps will have the following impact on the behavior of the cluster:
 
@@ -60,7 +60,13 @@ interval, during which users should not create new sessions. But
 you do not need to ask your users to halt existing sessions
 or deployments.
 
-### Step 1. Set the tool volume to read-write
+***NOTE:*** if you are performing this work on AE 5.5.2 or later,
+the steps have been simplified. Look for annotations marked
+*"5.5.1"* or *"5.5.2+"* for modifications specific to those version.
+
+### Step 1. Set the tool volume to read-write (5.5.1)
+
+***5.5.2+:*** skip this step and proceed directly to step 2.
 
 1. Edit the `anaconda-platform.yml` ConfigMap. On Gravity clusters,
    this is most easily performed in the Ops Center.
@@ -84,16 +90,20 @@ or deployments.
 As mentioned above, installation will proceed from within a standard
 AE5 session. So to begin the process, we complete the following steps:
 
-1. Download the project and save it to the machine
+1. ***5.5.2+:*** log into AE5 as the 
+   storage manager user, typically `anaconda-enterprise`.
+   This is the user that is given read-write access to the
+   `/tools` volume.
+2. Download the project and save it to the machine
    from which you are accessing AE5. A link is provided
    in the top section of this document.
-2. In a new browser window, log into AE5, and use the
+3. In a new browser window, log into AE5, and use the
    "Create+ / Upload Project" dialog to upload the RStudio
    Installation project archive that has been provided to you.
-3. We recommend using the JupyterLab editor for this project. To
+4. We recommend using the JupyterLab editor for this project. To
    change this, click on the project's name to be taken to the settings
    page, change the Default Editor, and Save.
-4. Launch a session for this project.
+5. Launch a session for this project.
 
 ### Step 3. Obtain the RStudio Server binaries
 
@@ -292,7 +302,9 @@ If for some reason, you experience issues with this:
 Please feel free to reach out to Anaconda support if this occurs.
 Make sure to include a copy of the editor logs you obtained above.
 
-### Step 7. Set the tool volume to read-only
+### Step 7. Set the tool volume to read-only (5.5.1)
+
+***5.5.2+:*** skip this step completely.
 
 1. Return to the ConfigMap editor.
 2. Search for the `/tools:` volume specification.
@@ -329,12 +341,13 @@ steps above, then:
 3. Remove the `/tools/rstudio` directory. If this can be performed
    outside of an AE5 session, this will likely be the most convenient
    approach. Otherwise, you must:
-   - Execute Step 1 to set the volume to read-write;
-   - Remove `/tools/rstudio` from within an AE5 session;
-   - Execute Step 7 to set the volume back to read-only.
+   - ***5.5.1:*** Execute Step 1 to set the volume to read-write
+   - ***5.5.2+:*** log into a session as the storage manager user
+   - Remove `/tools/rstudio` from within an AE5 session
+   - ***5.5.1:*** Execute Step 7 to set the volume back to read-only.
 
 Removing the `/tools` volume altogether is very distruptive, so we
-do not recommend doing so. See `TOOLS.md` for more details.
+strongly recommend against it. See `TOOLS.md` for more details.
 
 ## Managing and upgrading
 
