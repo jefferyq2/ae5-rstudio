@@ -75,7 +75,7 @@ will look something like this:
 volumes:
    /tools:
      pvc: anaconda-persistence
-     subPath: projects
+     subPath: tools
      readOnly: true
 ```
 
