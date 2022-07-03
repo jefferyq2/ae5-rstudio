@@ -29,9 +29,9 @@ proceeding with the instructions here.
 The latest approved versions of the RStudio support files can
 always be found at these links.
 
-- This file, in PDF form: [rstudio-install.pdf](http://airgap.svc.anaconda.com.s3.amazonaws.com/misc/rstudio-install.pdf)
-- Tools volume documentation: [tools-volume.pdf](http://airgap.svc.anaconda.com.s3.amazonaws.com/misc/tools-volume.pdf)
-- Installer project: [rstudio-installer.tar.bz2](http://airgap.svc.anaconda.com.s3.amazonaws.com/misc/rstudio-installer.tar.bz2)
+- This file, in PDF form: [rstudio-install.pdf](https://airgap.svc.anaconda.com.s3.amazonaws.com/misc/rstudio-install.pdf)
+- Tools volume documentation: [tools-volume.pdf](https://airgap.svc.anaconda.com.s3.amazonaws.com/misc/tools-volume.pdf)
+- Installer project: [rstudio-installer.tar.bz2](https://airgap.svc.anaconda.com.s3.amazonaws.com/misc/rstudio-installer.tar.bz2)
 
 ## Installation
 
