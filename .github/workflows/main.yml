@@ -41,7 +41,7 @@ jobs:
         else
           SUFFIX=-test
         fi
-        URL=s3://airgap.svc.anaconda.com/misc
+        URL=s3://airgap-svc/misc
         ARGS="--acl public-read --region $AWS_DEFAULT_REGION"
         for sfx in "$SUFFIX" "$SUFFIX2"; do
           aws s3 cp rstudio-installer.tar.bz2 $URL/rstudio-installer$sfx.tar.bz2 $ARGS
