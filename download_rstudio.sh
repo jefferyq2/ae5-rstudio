@@ -4,7 +4,7 @@ echo "+------------------------+"
 echo "| AE5 RStudio Downloader |"
 echo "+------------------------+"
 
-[ $RSTUDIO_VERSION ] || RSTUDIO_VERSION=2021.09.1-372
+[ $RSTUDIO_VERSION ] || RSTUDIO_VERSION=2022.02.3-492
 echo "- Target version: ${RSTUDIO_VERSION}"
 
 if [[ ! -z "$TOOL_PROJECT_URL" && -d data ]]; then
@@ -17,18 +17,24 @@ fi
 # CentOS 7 version to offer compatibility with older versions of R.
 for os_ver in 8 7; do
     what_os="RHEL${os_ver}/CentOS${os_ver}"
-    osdir=centos${os_ver}
-    fname=${fdir}rs-$osdir.rpm
+    fname=${fdir}rs-centos${os_ver}.rpm
     echo "- Downloading $what_os RPM file to $fname"
-    url=https://download2.rstudio.org/server/$osdir/x86_64/rstudio-server-rhel-${RSTUDIO_VERSION}-x86_64.rpm
-    echo "- URL: $url"
-    if ! curl -o $fname -L $url; then
-       echo "- ERROR: unexpected error downloading this package. Please resolve the error and try again."
-       exit -1
-    elif grep -q NoSuchKey $fname; then
-       echo "- ERROR: package not found as expected. Please verify the URL and try again."
-       rm -f $fname
-       exit -1basin 
+    for os_base in rhel centos; do
+        url=https://download2.rstudio.org/server/${os_base}${os_ver}/x86_64/rstudio-server-rhel-${RSTUDIO_VERSION}-x86_64.rpm
+        echo "- URL: $url"
+        if ! curl -o $fname -L $url; then
+           echo "- unexpected error with curl"
+           continue
+        elif grep -q NoSuchKey $fname; then
+           echo "- bucket error downoading package"
+           rm -f $fname
+           continue
+        fi
+        break
+    done
+    if [ ! -f $fname ]; then
+        echo "- ERROR: could not find package as expected. Please check URLs."
+        exit -1
     fi
     if which rpm2cpio &>/dev/null; then
         echo "- Verifying $fname"

@@ -22,6 +22,22 @@ elif [ $RSTUDIO_PREFIX != /usr/lib/rstudio-server ]; then
     exit -1
 fi
 
+if [ ! -z "$CONDA_PREFIX" ]; then
+    source deactivate 2>/dev/null
+fi
+java_loc=$(which java 2>/dev/null)
+if [ -z "$java_loc" ]; then
+    echo "ERROR: RStudio requires a centrally installed Java package"
+    echo "for operation. The latest version of Java can be obtained"
+    echo "from the Linux x64 link on this page:"
+    echo "  https://www.java.com/en/download/manual.jsp"
+    echo "Unpack this tarball manually into the directory /tools/java,"
+    echo "then stop and restart this session to proceed."
+    exit -1
+else
+    echo "- Found java: $java_loc"
+fi
+
 RSTUDIO_PARENT=$(dirname $RSTUDIO_PREFIX)
 if [[ -d $RSTUDIO_PREFIX || $RSTUDIO_PREFIX != /tools/rstudio ]]; then
     if [ ! -d $RSTUDIO_PREFIX ]; then
