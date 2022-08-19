@@ -1,6 +1,7 @@
 # Adding RStudio support to AE5.5.1+
 
-> **NOTE**: there is an [operating-system issue](https://bugzilla.redhat.com/show_bug.cgi?id=1909037) 
+> **NOTE**: there is an
+> [operating-system issue](https://bugzilla.redhat.com/show_bug.cgi?id=1909037) 
 > that prevents some R environments from working with RStudio.
 > This has been corrected in AE5.5.2. For AE5.5.1, there is a
 > simple workaround: add the conda package `openldap=2.4` to
@@ -176,14 +177,14 @@ each file is renamed after downloading, as described here.
 1. Download the CentOS 8 RPM:
 
    ```
-   https://download2.rstudio.org/server/centos8/x86_64/rstudio-server-rhel-2021.09.0-351-x86_64.rpm
+   https://download2.rstudio.org/server/rhel8/x86_64/rstudio-server-rhel-2022.07.1-554-x86_64.rpm
    ```
 
 2. Rename this file `rs-centos8.rpm`.
 3. Download the CentOS 7 RPM:
 
    ```
-   https://download2.rstudio.org/server/centos7/x86_64/rstudio-server-rhel-2021.09.0-351-x86_64.rpm
+   https://download2.rstudio.org/server/centos7/x86_64/rstudio-server-rhel-2022.07.1-554-x86_64.rpm
    ```
 
 4. Rename this file `rs-centos7.rpm`.
