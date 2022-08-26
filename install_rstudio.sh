@@ -105,7 +105,8 @@ mv $RSTUDIO_PREFIX/staging7/usr/lib/rstudio-server/bin/rsession $RSTUDIO_PREFIX/
 rm -rf $RSTUDIO_PREFIX/{staging7,staging8}
 
 echo "- Installing support files"
-cp Rprofile rsession.conf rsession.sh start_rstudio.sh default_env.py $RSTUDIO_PREFIX/
+cp -rf Rprofile rsession.conf rsession.sh start_rstudio.sh default_env.py skeleton $RSTUDIO_PREFIX/ || :
+find $RSTUDIO_PREFIX/skeleton -name '.keep' -exec rm -f {} \; || :
 chmod +x $RSTUDIO_PREFIX/{start_rstudio.sh,rsession.sh}
 
 echo "+-----------------------+"
