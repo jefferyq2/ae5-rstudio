@@ -4,7 +4,7 @@ echo "+------------------------+"
 echo "| AE5 RStudio Downloader |"
 echo "+------------------------+"
 
-[ $RSTUDIO_VERSION ] || RSTUDIO_VERSION=2022.07.1-554
+[ $RSTUDIO_VERSION ] || RSTUDIO_VERSION=2022.12.0-353
 echo "- Target version: ${RSTUDIO_VERSION}"
 
 if [[ ! -z "$TOOL_PROJECT_URL" && -d data ]]; then
