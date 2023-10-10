@@ -4,7 +4,7 @@ echo "+------------------------+"
 echo "| AE5 RStudio Downloader |"
 echo "+------------------------+"
 
-[ $RSTUDIO_VERSION ] || RSTUDIO_VERSION=2023.06.1-524
+[ $RSTUDIO_VERSION ] || RSTUDIO_VERSION=2023.09.0-463
 echo "- Target version: ${RSTUDIO_VERSION}"
 
 if [[ ! -z "$TOOL_PROJECT_URL" && -d data ]]; then
@@ -15,7 +15,7 @@ fi
 # We actually need two RPM packages: the CentOS 8 version is the version we
 # use in full, but we need to extract a single binary (rsession) from the
 # CentOS 7 version to offer compatibility with older versions of R.
-for os_ver in 8 7; do
+for os_ver in 9 8 7; do
     what_os="RHEL${os_ver}/CentOS${os_ver}"
     fname=${fdir}rs-centos${os_ver}.rpm
     echo "- Downloading $what_os RPM file to $fname"

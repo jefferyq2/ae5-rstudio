@@ -49,12 +49,21 @@ elif [ ! -w $RSTUDIO_PARENT ]; then
     exit -1
 fi
 
-if [[ ! -f rs-centos8.rpm && ! -f data/rs-centos8.rpm || ! -f rs-centos7.rpm && ! -f data/rs-centos7.rpm ]]; then
-    echo 'ERROR: the RStudio Server binaries are not present. Please follow the'
-    echo 'directions in README.md to bring these binaries into the project.'
+echo "- Install prefix: $RSTUDIO_PREFIX"
+
+missing=
+for v in 9 8 7; do
+    fname=rs-centos$v.rpm
+    [ -f $fname ] || [ -f data/$fname ] || missing="$missing$fname "
+done
+if [ -n "$missing" ]; then
+    echo "ERROR: one or more of the RStudio missing:"
+    echo "- $missing"
+    echo "Please follow the directions in README.md to"
+    echo "bring these binaries into the project."
     exit -1
 fi
-missing=
+
 for fname in Rprofile rsession.conf rsession.sh start_rstudio.sh default_env.py; do
     [ -f $fname ] || missing=$missing"$fname "
 done
@@ -65,10 +74,8 @@ if [ ! -z "$missing" ]; then
     exit -1
 fi
 
-echo "- Install prefix: $RSTUDIO_PREFIX"
-
-for os_ver in 8 7; do
-    fname=rs-centos$os_ver.rpm
+for v in 9 8 7; do
+    fname=rs-centos$v.rpm
     [ -f $fname ] || fname=data/$fname
     echo "- Verifying $fname"
     if ! rpm2cpio $fname >/dev/null; then
@@ -87,22 +94,30 @@ if [ ! -d $RSTUDIO_PREFIX ]; then
     fi
 fi
 
-echo "- Staging full RHEL8/CentOS8 package"
-mkdir -p $RSTUDIO_PREFIX/staging8/usr/lib/rstudio-server
-fname=rs-centos8.rpm
-[ -f $fname ] || fname=data/$fname
-rpm2cpio $fname | (cd $RSTUDIO_PREFIX/staging8 && cpio -ic "./usr/lib/rstudio-server/*")
+first=yes
 
-echo "- Staging RHEL7/CentOS7 rsession binary"
-mkdir -p $RSTUDIO_PREFIX/staging7/usr/lib/rstudio-server/bin
-fname=rs-centos7.rpm
-[ -f $fname ] || fname=data/$fname
-rpm2cpio $fname | (cd $RSTUDIO_PREFIX/staging7 && cpio -ic ./usr/lib/rstudio-server/bin/rsession)
+for v in 9 8 7; do
+    echo "- Unpacking RHEL${v}/CentOS${v} package"
+    mkdir -p $RSTUDIO_PREFIX/staging${v}/usr/lib/rstudio-server
+    fname=rs-centos${v}.rpm
+    [ -f $fname ] || fname=data/$fname
+    rpm2cpio $fname | (cd $RSTUDIO_PREFIX/staging${v} && cpio -ic)
+done
+
+if grep -q 'release 9' /etc/redhat-release; then
+    main_ver=9
+else
+    main_ver=8
+fi
 
 echo "- Moving files into final position"
-mv $RSTUDIO_PREFIX/staging8/usr/lib/rstudio-server/* $RSTUDIO_PREFIX
-mv $RSTUDIO_PREFIX/staging7/usr/lib/rstudio-server/bin/rsession $RSTUDIO_PREFIX/bin/rsession10
-rm -rf $RSTUDIO_PREFIX/{staging7,staging8}
+mkdir $RSTUDIO_PREFIX/bin2
+mv $RSTUDIO_PREFIX/staging9/usr/lib/rstudio-server/bin/rsession $RSTUDIO_PREFIX/bin2/rsession30
+mv $RSTUDIO_PREFIX/staging8/usr/lib/rstudio-server/bin/rsession $RSTUDIO_PREFIX/bin2/rsession11
+mv $RSTUDIO_PREFIX/staging7/usr/lib/rstudio-server/bin/rsession $RSTUDIO_PREFIX/bin2/rsession10
+mv $RSTUDIO_PREFIX/staging${main_ver}/usr/lib/rstudio-server/* $RSTUDIO_PREFIX
+mv $RSTUDIO_PREFIX/bin2/* $RSTUDIO_PREFIX/bin
+rm -rf $RSTUDIO_PREFIX/staging* $RSTUDIO_PREFIX/bin2
 
 echo "- Installing support files"
 cp -rf Rprofile rsession.conf rsession.sh start_rstudio.sh default_env.py skeleton $RSTUDIO_PREFIX/ || :

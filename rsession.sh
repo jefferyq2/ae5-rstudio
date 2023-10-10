@@ -88,12 +88,39 @@ else
     echo "| R_HOME is correct"
 fi
 
+# The installed version of RStudio uses OpenSSL 1.1, while our versions of R 3.5 use
+# OpenSSL 1.0. Unfortunately RStudio doesn't realize this and dynamically links our R
+# to their rsession binary in an incompatible way. To fix this we assume an OpenSSL 1.0
+# version of rsession is available with the name "rsession10" and point it at our
+# conda environment version of OpenSSL
+sslver=$(ls -l $CONDA_PREFIX/lib/libssl.so | awk '{print $NF;}')
+echo "| SSL library detected: $sslver"
+if [[ "$sslver" == libssl.so.3* ]]; then
+  echo "| Using OpenSSL 3.0 version of rsession"
+  RSESSION=rsession30
+elif [[ "$sslver" == libssl.so.1.1* ]]; then
+  echo "| Using OpenSSL 1.1 version of rsession"
+  [ -f /lib64/libssl.so.1.1* ] && nativessl=yes
+  RSESSION=rsession11
+elif [[ "$sslver" == libssl.so.1.0* ]]; then
+  echo "| Using OpenSSL 1.0 version of rsession"
+  ln -s $CONDA_PREFIX/lib/libssl.so $CONDA_PREFIX/lib/libssl.so.10 2>/dev/null || :
+  ln -s $CONDA_PREFIX/lib/libcrypto.so $CONDA_PREFIX/lib/libcrypto.so.10 2>/dev/null || :
+  RSESSION=rsession10
+else
+  echo "| Defaulting to OpenSSL 3.0 version of rsession"
+  RSESSION=rsession30
+fi
+
 # Make sure $CONDA_PREFIX/lib and $CONDA_PREFIX/lib/R/lib are in LD_LIBRARY_PATH
 # RStudio actually adds $CONDA_PREFIX/lib/R/lib for us, but we overwrite that
 # when we read in .Renviron above, so we're putting it back here again.
 echo "| Adding CONDA_PREFIX libraries to LD_LIBRARY_PATH"
 __tmp=$(echo $LD_LIBRARY_PATH: | sed "s@$CONDA_PREFIX/lib\(/R/lib\)\?:@@g")
-export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/R/lib:$CONDA_PREFIX/lib:${__tmp%:}
+LD_LIBRARY_PATH=$CONDA_PREFIX/lib/R/lib:$CONDA_PREFIX/lib:${__tmp%:}
+# work around: /lib64/libldap.so.2: undefined symbol: EVP_md2, version OPENSSL_3.0.0
+[ "$RSESSION" = rsession30 ] && LD_LIBRARY_PATH=/lib64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH
 
 echo "| Final environment: $CONDA_DEFAULT_ENV"
 echo "|   CONDA_PREFIX: $CONDA_PREFIX"
@@ -109,21 +136,8 @@ echo "|   LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
 # see the nss_wrapper-supplied username.
 echo "| Writing environment variables to .Renviron"
 export R_PROFILE=$TOOL_HOME/Rprofile
-env | sed -nE 's@^([^=]*)=(.*)@\1="\2"@p' > ~/.Renviron
-echo PS1='"('$(basename "$CONDA_PREFIX")') "' >> ~/.Renviron
-
-# The installed version of RStudio uses OpenSSL 1.1, while our versions of R 3.5 use
-# OpenSSL 1.0. Unfortunately RStudio doesn't realize this and dynamically links our R
-# to their rsession binary in an incompatible way. To fix this we assume an OpenSSL 1.0
-# version of rsession is available with the name "rsession10" and point it at our
-# conda environment version of OpenSSL
-RSESSION=rsession
-if [[ -f $CONDA_PREFIX/lib/libssl.so.1.0.0 && -f $TOOL_HOME/bin/rsession10 ]]; then
-    echo "| Using OpenSSL 1.0 version of rsession"
-    ln -s $CONDA_PREFIX/lib/libssl.so $CONDA_PREFIX/lib/libssl.so.10 2>/dev/null || :
-    ln -s $CONDA_PREFIX/lib/libcrypto.so $CONDA_PREFIX/lib/libcrypto.so.10 2>/dev/null || :
-    RSESSION=rsession10
-fi
+env | grep -vE "^ANACONDA_(SESSION_|ENTERPRISE_(AP|NGINX|REDIS|POSTGRES)_)" | sed -nE 's@^([^=]*)=(.*)@\1="\2"@p' > ~/.Renviron
+[ -f ~/.profile ] || cp $TOOL_HOME/profile.sh ~/.profile
 
 echo "| Running: $RSESSION $@"
 echo "+-- END: AE5 R Session Manager ---"
