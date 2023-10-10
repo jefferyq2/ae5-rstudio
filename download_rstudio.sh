@@ -26,7 +26,7 @@ for os_ver in 8 7; do
            echo "- unexpected error with curl"
            continue
         elif grep -q NoSuchKey $fname; then
-           echo "- bucket error downoading package"
+           echo "- bucket error downloading package"
            rm -f $fname
            continue
         fi
