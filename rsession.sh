@@ -95,7 +95,10 @@ fi
 # conda environment version of OpenSSL
 sslver=$(ls -l $CONDA_PREFIX/lib/libssl.so | awk '{print $NF;}')
 echo "| SSL library detected: $sslver"
-if [[ "$sslver" == libssl.so.3* ]]; then
+if [ -f $CONDA_PREFIX/bin/rsession ]; then
+  echo "| Using environmnent-hosted rsession"
+  RSESSION=$CONDA_PREFIX/bin/rsession
+elif [[ "$sslver" == libssl.so.3* ]]; then
   echo "| Using OpenSSL 3.0 version of rsession"
   RSESSION=rsession30
 elif [[ "$sslver" == libssl.so.1.1* ]]; then
@@ -120,6 +123,7 @@ __tmp=$(echo $LD_LIBRARY_PATH: | sed "s@$CONDA_PREFIX/lib\(/R/lib\)\?:@@g")
 LD_LIBRARY_PATH=$CONDA_PREFIX/lib/R/lib:$CONDA_PREFIX/lib:${__tmp%:}
 # work around: /lib64/libldap.so.2: undefined symbol: EVP_md2, version OPENSSL_3.0.0
 [ "$RSESSION" = rsession30 ] && LD_LIBRARY_PATH=/lib64:$LD_LIBRARY_PATH
+[[ $RSESSION = /* ]] || RSESSION=$TOOL_HOME/bin/$RSESSION
 export LD_LIBRARY_PATH
 
 echo "| Final environment: $CONDA_DEFAULT_ENV"
@@ -137,8 +141,7 @@ echo "|   LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
 echo "| Writing environment variables to .Renviron"
 export R_PROFILE=$TOOL_HOME/Rprofile
 env | grep -vE "^ANACONDA_(SESSION_|ENTERPRISE_(AP|NGINX|REDIS|POSTGRES)_)" | sed -nE 's@^([^=]*)=(.*)@\1="\2"@p' > ~/.Renviron
-[ -f ~/.profile ] || cp $TOOL_HOME/profile.sh ~/.profile
 
 echo "| Running: $RSESSION $@"
 echo "+-- END: AE5 R Session Manager ---"
-exec $TOOL_HOME/bin/$RSESSION "$@"
+exec $RSESSION "$@"
