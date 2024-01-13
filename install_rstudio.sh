@@ -121,8 +121,12 @@ rm -rf $RSTUDIO_PREFIX/staging* $RSTUDIO_PREFIX/bin2
 
 echo "- Installing support files"
 cp -rf Rprofile rsession.conf rsession.sh start_rstudio.sh default_env.py skeleton $RSTUDIO_PREFIX/ || :
+cp profile.sh $RSTUDIO_PREFIX/resources/terminal/hooks
 find $RSTUDIO_PREFIX/skeleton -name '.keep' -exec rm -f {} \; || :
 chmod +x $RSTUDIO_PREFIX/{start_rstudio.sh,rsession.sh}
+if [ $RSTUDIO_PREFIX != /tools/rstudio ]; then
+    sed -i.bak "@/tools/rstudio/@$RSTUDIO_PREFIX/@" $RSTUDIO_PREFIX/rsession.conf
+fi
 
 echo "+-----------------------+"
 echo "RStudio installation is complete."
