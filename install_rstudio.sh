@@ -51,8 +51,14 @@ fi
 
 echo "- Install prefix: $RSTUDIO_PREFIX"
 
+if grep -q 'release 9' /etc/redhat-release; then
+    main_ver=9
+else
+    main_ver=8
+fi
+
 missing=
-for v in 9 8 7; do
+for v in $main_ver; do
     fname=rs-centos$v.rpm
     [ -f $fname ] || [ -f data/$fname ] || missing="$missing$fname "
 done
@@ -64,8 +70,9 @@ if [ -n "$missing" ]; then
     exit -1
 fi
 
-for fname in Rprofile rsession.conf rsession.sh start_rstudio.sh default_env.py; do
-    [ -f $fname ] || missing=$missing"$fname "
+for fname in Rprofile configure_env.sh rsession.sh \
+    start_rstudio.sh default_env.py profile.sh; do
+    [ -e $fname ] || missing=$missing"$fname "
 done
 if [ ! -z "$missing" ]; then
     echo "One or more of the installer support files is missing:"
@@ -74,7 +81,7 @@ if [ ! -z "$missing" ]; then
     exit -1
 fi
 
-for v in 9 8 7; do
+for v in $main_ver; do
     fname=rs-centos$v.rpm
     [ -f $fname ] || fname=data/$fname
     echo "- Verifying $fname"
@@ -96,7 +103,7 @@ fi
 
 first=yes
 
-for v in 9 8 7; do
+for v in $main_ver; do
     echo "- Unpacking RHEL${v}/CentOS${v} package"
     mkdir -p $RSTUDIO_PREFIX/staging${v}/usr/lib/rstudio-server
     fname=rs-centos${v}.rpm
@@ -104,38 +111,23 @@ for v in 9 8 7; do
     rpm2cpio $fname | (cd $RSTUDIO_PREFIX/staging${v} && cpio -ic)
 done
 
-if grep -q 'release 9' /etc/redhat-release; then
-    main_ver=9
-else
-    main_ver=8
-fi
-
 echo "- Moving files into final position"
-mkdir $RSTUDIO_PREFIX/bin2
-mv $RSTUDIO_PREFIX/staging9/usr/lib/rstudio-server/bin/rsession $RSTUDIO_PREFIX/bin2/rsession30
-mv $RSTUDIO_PREFIX/staging8/usr/lib/rstudio-server/bin/rsession $RSTUDIO_PREFIX/bin2/rsession11
-mv $RSTUDIO_PREFIX/staging7/usr/lib/rstudio-server/bin/rsession $RSTUDIO_PREFIX/bin2/rsession10
 mv $RSTUDIO_PREFIX/staging${main_ver}/usr/lib/rstudio-server/* $RSTUDIO_PREFIX
-mv $RSTUDIO_PREFIX/bin2/* $RSTUDIO_PREFIX/bin
-rm -rf $RSTUDIO_PREFIX/staging* $RSTUDIO_PREFIX/bin2
+rm -rf $RSTUDIO_PREFIX/staging*
 
 echo "- Installing support files"
-cp -rf Rprofile rsession.conf rsession.sh start_rstudio.sh default_env.py skeleton $RSTUDIO_PREFIX/ || :
+cp -rf Rprofile configure_env.sh rsession.sh \
+    start_rstudio.sh default_env.py skeleton $RSTUDIO_PREFIX/
 cp profile.sh $RSTUDIO_PREFIX/resources/terminal/hooks
 find $RSTUDIO_PREFIX/skeleton -name '.keep' -exec rm -f {} \; || :
 chmod +x $RSTUDIO_PREFIX/{start_rstudio.sh,rsession.sh}
-if [ $RSTUDIO_PREFIX != /tools/rstudio ]; then
-    sed -i.bak "@/tools/rstudio/@$RSTUDIO_PREFIX/@" $RSTUDIO_PREFIX/rsession.conf
-fi
 
 echo "+-----------------------+"
 echo "RStudio installation is complete."
 echo "Once you have verified the installation, feel free to"
 echo "shut down this session and delete the project."
 echo "+-----------------------+"
-[ -z "$CONDA_PREFIX" ] || source deactivate
-java_loc=$(which java 2>/dev/null)
-if [ -z "$java_loc" ]; then
+if [ ! -d /tools/java ]; then
     echo "WARNING: Many R packages make use of Java, and it seems"
     echo "not to be present on this installation of AE5. To make"
     echo "Java available to all AE5 users, run install_java.sh, or"
