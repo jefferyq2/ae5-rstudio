@@ -3,10 +3,11 @@
     message(paste(strwrap(paste(..., collapse=' ')), collapse='\n'))
   }
   wait_for_prepare_log <- function(newSession) {
-    readRenviron('/opt/continuum/.Renviron')
+    if (file.exists('/tmp/.rstudio_environment'))
+        readRenviron('/tmp/.rstudio_environment')
     current_env = Sys.getenv('CONDA_DEFAULT_ENV')
     desired_env = Sys.getenv('CONDA_DESIRED_ENV')
-    fpath = '/opt/continuum/prepare.log'
+    fpath = '~/prepare.log'
     cat('Active conda environment:', current_env, '\n')
     if (!file.exists(fpath)) {
       if (current_env == desired_env) {

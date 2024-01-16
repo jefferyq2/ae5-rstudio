@@ -1,20 +1,15 @@
 #!/bin/bash
 
+echo "+-- START: AE5 RStudio Startup ---"
 TOOL_HOME=$(dirname "${BASH_SOURCE[0]}")
-echo "RStudio home: $TOOL_HOME"
-echo "User home: $HOME"
 
-# RStudio Server must have R on its path when it launches.
-# It does not need to be the actual environment the project uses; our
-# custom rsession script will switch R_HOME and the PATH accordingly.
-source $HOME/anaconda/bin/activate anaconda50_r
+# Determine which R environment to start with. Ideally, the project
+# environment is ready in which case it can be selected. But if it is
+# not, we must select an existing environment, because RStudio requires
+# one to exist when the it starts
+source $TOOL_HOME/configure_env.sh
 
-# Ensure R sees all of the currently available environment variables
-env | sed -nE 's@^([^=]*)=(.*)@\1="\2"@p' > $HOME/.Renviron
-
-args=($TOOL_HOME/bin/rserver \
-      --rsession-config-file $TOOL_HOME/rsession.conf \
-      --rsession-path $TOOL_HOME/rsession.sh \
+args=($TOOL_HOME/bin/rserver --rsession-path $TOOL_HOME/rsession.sh \
       --auth-none=1 --auth-validate-users=0 --auth-minimum-user-id=1 \
       --server-working-dir=$HOME --server-user=$(id -un))
 
@@ -23,5 +18,7 @@ args=($TOOL_HOME/bin/rserver \
 [[ $TOOL_ADDRESS ]] && args+=(--www-address=$TOOL_ADDRESS)
 [[ $TOOL_IFRAME_HOSTS ]] && args+=(--www-frame-origin=$TOOL_IFRAME_HOSTS)
 
-echo "${args[@]}"
-exec "${args[@]}"
+cmd="${args[@]}"
+echo @Running: $cmd@ | fold -s | sed 's/^/  /;s/$/\\/;s/^  @//;s/@\\//;s/^/| /'
+echo "+-- END: AE5 RStudio Startup ---"
+exec $cmd
